@@ -12,11 +12,11 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
 
   const getDashboardLink = () => {
     if (!isAuthenticated) return "/login";
-    return user?.tipo === "client" ? "/dashboard" : "/dashboard-vet";
+    return profile?.tipo === "client" ? "/dashboard" : "/dashboard-vet";
   };
 
   return (

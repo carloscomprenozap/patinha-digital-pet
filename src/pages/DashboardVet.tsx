@@ -1,4 +1,3 @@
-
 import React from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { agendamentosMock, petsMock, veterinariosMock } from "@/data/mockData";
 import { Link } from "react-router-dom";
 
 const DashboardVet = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Filtrar dados de acordo com o veterinário logado
   const veterinario = user ? veterinariosMock.find(v => v.id === user.id) : null;
@@ -63,7 +62,7 @@ const DashboardVet = () => {
       <div className="space-y-8">
         {/* Cabeçalho */}
         <div>
-          <h1 className="text-3xl font-bold mb-1">Olá, {user?.nome.split(' ')[0]}!</h1>
+          <h1 className="text-3xl font-bold mb-1">Olá, {profile?.nome?.split(' ')[0] || 'Doutor(a)'}!</h1>
           <p className="text-muted-foreground">
             Bem-vindo ao seu dashboard profissional.
           </p>

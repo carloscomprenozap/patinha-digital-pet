@@ -197,9 +197,9 @@ const Cadastro = () => {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? "Cadastrando..." : "Cadastrar"}
+                {loading ? "Cadastrando..." : "Cadastrar"}
               </Button>
             </form>
           </CardContent>

@@ -19,7 +19,7 @@ const queryClient = new QueryClient();
 
 // Componente de rota protegida para clientes
 const ClienteRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, profile, loading } = useAuth();
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -29,7 +29,7 @@ const ClienteRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" />;
   }
   
-  if (user?.tipo !== 'client') {
+  if (profile?.tipo !== 'client') {
     return <Navigate to="/dashboard-vet" />;
   }
   
@@ -38,7 +38,7 @@ const ClienteRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Componente de rota protegida para veterinários
 const VeterinarioRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, profile, loading } = useAuth();
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -48,7 +48,7 @@ const VeterinarioRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" />;
   }
   
-  if (user?.tipo !== 'vet') {
+  if (profile?.tipo !== 'vet') {
     return <Navigate to="/dashboard" />;
   }
   
@@ -57,14 +57,14 @@ const VeterinarioRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Componente para redirecionar usuário autenticado
 const GuestRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, profile, loading } = useAuth();
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
   if (isAuthenticated) {
-    if (user?.tipo === 'vet') {
+    if (profile?.tipo === 'vet') {
       return <Navigate to="/dashboard-vet" />;
     }
     return <Navigate to="/dashboard" />;

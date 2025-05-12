@@ -7,8 +7,12 @@ import { Database } from "@/integrations/supabase/types";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+interface UserWithProfile extends User {
+  profile?: Profile | null;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: UserWithProfile | null;
   profile: Profile | null;
   loading: boolean;
   login: (credentials: { email: string; senha: string }) => Promise<boolean>;
@@ -29,7 +33,7 @@ interface SignupData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserWithProfile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
@@ -41,12 +45,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        
+        const currentUser = currentSession?.user ?? null;
+        setUser(currentUser ? { ...currentUser } : null);
         
         // Obtém perfil do usuário quando o estado muda
-        if (currentSession?.user) {
+        if (currentUser) {
           setTimeout(() => {
-            fetchProfile(currentSession.user.id);
+            fetchProfile(currentUser.id);
           }, 0);
         } else {
           setProfile(null);
@@ -57,10 +63,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Verifica sessão existente no carregamento inicial
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
       
-      if (currentSession?.user) {
-        fetchProfile(currentSession.user.id);
+      const currentUser = currentSession?.user ?? null;
+      setUser(currentUser ? { ...currentUser } : null);
+      
+      if (currentUser) {
+        fetchProfile(currentUser.id);
       }
       setLoading(false);
     });
@@ -83,6 +91,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setProfile(data);
+      
+      // Atualiza o objeto de usuário com o perfil
+      setUser(prev => prev ? { ...prev, profile: data } : null);
     } catch (error) {
       console.error("Erro ao buscar perfil:", error);
     }

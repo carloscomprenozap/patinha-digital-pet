@@ -24,11 +24,11 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const isClient = user?.tipo === 'client';
+  const isClient = profile?.tipo === 'client';
 
   const handleLogout = () => {
     logout();

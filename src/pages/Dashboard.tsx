@@ -9,7 +9,7 @@ import { agendamentosMock, clientesMock, petsMock, veterinariosMock } from "@/da
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Filtrar dados de acordo com o cliente logado
   const cliente = user ? clientesMock.find(c => c.id === user.id) : null;
@@ -49,7 +49,7 @@ const Dashboard = () => {
       <div className="space-y-8">
         {/* Cabeçalho */}
         <div>
-          <h1 className="text-3xl font-bold mb-1">Olá, {user?.nome.split(' ')[0]}!</h1>
+          <h1 className="text-3xl font-bold mb-1">Olá, {profile?.nome?.split(' ')[0] || 'Usuário'}!</h1>
           <p className="text-muted-foreground">
             Bem-vindo ao seu dashboard pessoal.
           </p>

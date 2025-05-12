@@ -199,6 +199,36 @@ export type Database = {
           },
         ]
       }
+      mensagens: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          lido: boolean | null
+          receiver_id: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          lido?: boolean | null
+          receiver_id: string
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          lido?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pets: {
         Row: {
           client_id: string
@@ -272,6 +302,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      prontuarios: {
+        Row: {
+          anamnese: string | null
+          consulta_id: string
+          created_at: string
+          diagnostico: string | null
+          id: string
+          observacoes: string | null
+          pet_id: string
+          prescricao: string | null
+          updated_at: string
+          vet_id: string
+        }
+        Insert: {
+          anamnese?: string | null
+          consulta_id: string
+          created_at?: string
+          diagnostico?: string | null
+          id?: string
+          observacoes?: string | null
+          pet_id: string
+          prescricao?: string | null
+          updated_at?: string
+          vet_id: string
+        }
+        Update: {
+          anamnese?: string | null
+          consulta_id?: string
+          created_at?: string
+          diagnostico?: string | null
+          id?: string
+          observacoes?: string | null
+          pet_id?: string
+          prescricao?: string | null
+          updated_at?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prontuarios_consulta_id_fkey"
+            columns: ["consulta_id"]
+            isOneToOne: false
+            referencedRelation: "consultas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prontuarios_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       veterinarios: {
         Row: {

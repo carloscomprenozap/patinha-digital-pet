@@ -11,6 +11,8 @@ import {
   User, 
   List,
   Clock,
+  MessageSquare,
+  MapPin,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import {
@@ -41,13 +43,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: List, label: "Minhas Consultas", path: "/minhas-consultas" },
     { icon: User, label: "Meus Pets", path: "/meus-pets" },
     { icon: Clock, label: "Histórico", path: "/historico" },
+    { icon: MessageSquare, label: "Mensagens", path: "/mensagens" },
+    { icon: User, label: "Meu Perfil", path: "/perfil" },
   ];
 
   const vetMenuItems = [
-    { icon: Home, label: "Dashboard", path: "/dashboard-vet" },
+    { icon: Home, label: "Meu Consultório", path: "/dashboard-vet" },
     { icon: Calendar, label: "Agenda", path: "/agenda" },
-    { icon: List, label: "Consultas Hoje", path: "/consultas-hoje" },
-    { icon: Clock, label: "Histórico", path: "/historico-atendimentos" },
+    { icon: MapPin, label: "Clínica", path: "/clinica" },
+    { icon: MessageSquare, label: "Mensagens", path: "/mensagens" },
+    { icon: Clock, label: "Meus Horários", path: "/meus-horarios" },
+    { icon: List, label: "Histórico", path: "/historico-atendimentos" },
+    { icon: User, label: "Meu Perfil", path: "/perfil" },
   ];
 
   const menuItems = isClient ? clientMenuItems : vetMenuItems;

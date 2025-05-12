@@ -14,6 +14,13 @@ import Dashboard from "./pages/Dashboard";
 import DashboardVet from "./pages/DashboardVet";
 import AgendarConsulta from "./pages/AgendarConsulta";
 import NotFound from "./pages/NotFound";
+import Agenda from "./pages/Agenda";
+import MeusHorarios from "./pages/MeusHorarios";
+import HistoricoAtendimentos from "./pages/HistoricoAtendimentos";
+import Clinica from "./pages/Clinica";
+import Mensagens from "./pages/Mensagens";
+import Perfil from "./pages/Perfil";
+import Prontuario from "./pages/Prontuario";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +57,21 @@ const VeterinarioRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (profile?.tipo !== 'vet') {
     return <Navigate to="/dashboard" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Componente para rota protegida para usuários autenticados (qualquer tipo)
+const AuthRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
   }
   
   return <>{children}</>;
@@ -129,6 +151,64 @@ const AppRoutes = () => (
         <VeterinarioRoute>
           <DashboardVet />
         </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/agenda" 
+      element={
+        <VeterinarioRoute>
+          <Agenda />
+        </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/meus-horarios" 
+      element={
+        <VeterinarioRoute>
+          <MeusHorarios />
+        </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/historico-atendimentos" 
+      element={
+        <VeterinarioRoute>
+          <HistoricoAtendimentos />
+        </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/clinica" 
+      element={
+        <VeterinarioRoute>
+          <Clinica />
+        </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/prontuario" 
+      element={
+        <VeterinarioRoute>
+          <Prontuario />
+        </VeterinarioRoute>
+      } 
+    />
+    
+    {/* Rotas Compartilhadas (Cliente e Veterinário) */}
+    <Route 
+      path="/mensagens" 
+      element={
+        <AuthRoute>
+          <Mensagens />
+        </AuthRoute>
+      } 
+    />
+    <Route 
+      path="/perfil" 
+      element={
+        <AuthRoute>
+          <Perfil />
+        </AuthRoute>
       } 
     />
     

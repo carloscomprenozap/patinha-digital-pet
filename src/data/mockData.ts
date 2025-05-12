@@ -1,4 +1,5 @@
-import { Address, Agendamento, Client, Consulta, Pet, Veterinarian, User } from "@/types";
+
+import { Address, Agendamento, Client, Consulta, Pet, Veterinarian, UserType } from "@/types";
 
 // Endereços mockados
 export const enderecosMock: Address[] = [
@@ -290,7 +291,7 @@ export type LoginCredentials = {
   senha: string;
 };
 
-export const verificarLogin = (credentials: LoginCredentials): User | null => {
+export const verificarLogin = (credentials: LoginCredentials): Client | Veterinarian | null => {
   // Mock - normalmente verificaria contra uma base de dados real
   if (credentials.email === "ana.silva@email.com" && credentials.senha === "senha123") {
     return clientesMock[0];

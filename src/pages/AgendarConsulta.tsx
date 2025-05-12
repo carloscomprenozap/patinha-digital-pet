@@ -67,7 +67,7 @@ const AgendarConsulta = () => {
     // Simulando um delay de rede
     setTimeout(() => {
       const resultado = veterinariosMock.filter((vet) => {
-        const matchEstado = !filtros.estado || vet.endereco.estado.includes(filtros.estado);
+        const matchEstado = filtros.estado === "todos" || !filtros.estado || vet.endereco.estado.includes(filtros.estado);
         const matchCidade = !filtros.cidade || 
           vet.endereco.cidade.toLowerCase().includes(filtros.cidade.toLowerCase());
         const matchBairro = !filtros.bairro || 
@@ -211,7 +211,7 @@ const AgendarConsulta = () => {
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos</SelectItem>
+                        <SelectItem value="todos">Todos os estados</SelectItem>
                         {estadosBrasileiros.map((estado) => (
                           <SelectItem key={estado} value={estado}>{estado}</SelectItem>
                         ))}

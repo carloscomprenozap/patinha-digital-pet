@@ -1,5 +1,4 @@
-
-import { Address, Agendamento, Client, Consulta, Pet, Veterinarian } from "@/types";
+import { Address, Agendamento, Client, Consulta, Pet, Veterinarian, User } from "@/types";
 
 // Endereços mockados
 export const enderecosMock: Address[] = [

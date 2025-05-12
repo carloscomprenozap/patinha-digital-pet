@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Veterinarian, Address, HorarioDisponivel, Pet } from '@/types';
 import { format } from 'date-fns';
-import ptBR from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,

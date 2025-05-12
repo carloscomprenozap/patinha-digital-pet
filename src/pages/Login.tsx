@@ -14,8 +14,12 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layouts/MainLayout";
-import { LoginCredentials } from "@/data/mockData";
 import Logo from "@/components/Logo";
+
+interface LoginCredentials {
+  email: string;
+  senha: string;
+}
 
 const Login = () => {
   const [credentials, setCredentials] = useState<LoginCredentials>({ email: "", senha: "" });

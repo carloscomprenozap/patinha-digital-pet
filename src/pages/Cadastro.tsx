@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import {
   CardFooter 
 } from "@/components/ui/card";
 import MainLayout from "@/components/layouts/MainLayout";
-import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 
 interface FormData {
@@ -33,7 +32,7 @@ const Cadastro = () => {
     confirmarSenha: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const { signup, loading } = useAuth();
   const navigate = useNavigate();
 
   const validate = () => {
@@ -78,17 +77,17 @@ const Cadastro = () => {
       return;
     }
     
-    setIsLoading(true);
+    const success = await signup({
+      nome: formData.nome,
+      email: formData.email,
+      telefone: formData.telefone,
+      senha: formData.senha,
+      tipo: 'client'
+    });
     
-    // Simular registro
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Você já pode fazer login na plataforma.",
-      });
+    if (success) {
       navigate("/login");
-    }, 1500);
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {

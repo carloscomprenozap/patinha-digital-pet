@@ -9,7 +9,302 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      consultas: {
+        Row: {
+          client_id: string
+          created_at: string
+          data: string
+          diagnostico: string | null
+          horario: string
+          id: string
+          observacoes: string | null
+          pet_id: string
+          prescricao: string | null
+          recomendacoes: string | null
+          status: string
+          updated_at: string
+          vet_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data: string
+          diagnostico?: string | null
+          horario: string
+          id?: string
+          observacoes?: string | null
+          pet_id: string
+          prescricao?: string | null
+          recomendacoes?: string | null
+          status?: string
+          updated_at?: string
+          vet_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data?: string
+          diagnostico?: string | null
+          horario?: string
+          id?: string
+          observacoes?: string | null
+          pet_id?: string
+          prescricao?: string | null
+          recomendacoes?: string | null
+          status?: string
+          updated_at?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_vet_id_fkey"
+            columns: ["vet_id"]
+            isOneToOne: false
+            referencedRelation: "veterinarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disponibilidades: {
+        Row: {
+          created_at: string
+          dia_semana: number
+          hora_fim: string
+          hora_inicio: string
+          id: string
+          updated_at: string
+          vet_id: string
+        }
+        Insert: {
+          created_at?: string
+          dia_semana: number
+          hora_fim: string
+          hora_inicio: string
+          id?: string
+          updated_at?: string
+          vet_id: string
+        }
+        Update: {
+          created_at?: string
+          dia_semana?: number
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+          updated_at?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disponibilidades_vet_id_fkey"
+            columns: ["vet_id"]
+            isOneToOne: false
+            referencedRelation: "veterinarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enderecos: {
+        Row: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string | null
+          created_at: string
+          estado: string
+          id: string
+          logradouro: string
+          numero: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento?: string | null
+          created_at?: string
+          estado: string
+          id?: string
+          logradouro: string
+          numero: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          logradouro?: string
+          numero?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enderecos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      especialidades: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          vet_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          vet_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "especialidades_vet_id_fkey"
+            columns: ["vet_id"]
+            isOneToOne: false
+            referencedRelation: "veterinarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pets: {
+        Row: {
+          client_id: string
+          created_at: string
+          especie: string
+          id: string
+          idade: number
+          nome: string
+          observacoes: string | null
+          peso: number
+          raca: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          especie: string
+          id?: string
+          idade: number
+          nome: string
+          observacoes?: string | null
+          peso: number
+          raca: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          especie?: string
+          id?: string
+          idade?: number
+          nome?: string
+          observacoes?: string | null
+          peso?: number
+          raca?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          telefone: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          nome: string
+          telefone?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      veterinarios: {
+        Row: {
+          created_at: string
+          crmv: string
+          id: string
+          preco_consulta: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crmv: string
+          id: string
+          preco_consulta: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crmv?: string
+          id?: string
+          preco_consulta?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "veterinarios_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

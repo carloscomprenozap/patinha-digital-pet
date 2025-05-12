@@ -21,6 +21,13 @@ import Clinica from "./pages/Clinica";
 import Mensagens from "./pages/Mensagens";
 import Perfil from "./pages/Perfil";
 import Prontuario from "./pages/Prontuario";
+import Clinicas from "./pages/Clinicas";
+import Favoritos from "./pages/Favoritos";
+import Historico from "./pages/Historico";
+import MeusPets from "./pages/MeusPets";
+import Prontuarios from "./pages/Prontuarios";
+import VetConnect from "./pages/VetConnect";
+import Modulos from "./pages/Modulos";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +150,54 @@ const AppRoutes = () => (
         </ClienteRoute>
       } 
     />
+    <Route 
+      path="/minhas-consultas" 
+      element={
+        <ClienteRoute>
+          <Historico />
+        </ClienteRoute>
+      } 
+    />
+    <Route 
+      path="/meus-pets" 
+      element={
+        <ClienteRoute>
+          <MeusPets />
+        </ClienteRoute>
+      } 
+    />
+    <Route 
+      path="/clinicas" 
+      element={
+        <ClienteRoute>
+          <Clinicas />
+        </ClienteRoute>
+      } 
+    />
+    <Route 
+      path="/favoritos" 
+      element={
+        <ClienteRoute>
+          <Favoritos />
+        </ClienteRoute>
+      } 
+    />
+    <Route 
+      path="/prontuarios" 
+      element={
+        <ClienteRoute>
+          <Prontuarios />
+        </ClienteRoute>
+      } 
+    />
+    <Route 
+      path="/historico" 
+      element={
+        <ClienteRoute>
+          <Historico />
+        </ClienteRoute>
+      } 
+    />
     
     {/* Rotas de Veterinário */}
     <Route 
@@ -188,8 +243,24 @@ const AppRoutes = () => (
     <Route 
       path="/prontuario" 
       element={
-        <VeterinarioRoute>
+        <AuthRoute>
           <Prontuario />
+        </AuthRoute>
+      } 
+    />
+    <Route 
+      path="/vetconnect" 
+      element={
+        <VeterinarioRoute>
+          <VetConnect />
+        </VeterinarioRoute>
+      } 
+    />
+    <Route 
+      path="/modulos" 
+      element={
+        <VeterinarioRoute>
+          <Modulos />
         </VeterinarioRoute>
       } 
     />

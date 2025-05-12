@@ -7,12 +7,15 @@ import {
   Calendar, 
   Home, 
   LogOut, 
-  Menu, 
   User, 
   List,
   Clock,
   MessageSquare,
   MapPin,
+  Heart,
+  Users,
+  FileText,
+  Bell,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import {
@@ -41,7 +44,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: Calendar, label: "Agendar Consulta", path: "/agendar" },
     { icon: List, label: "Minhas Consultas", path: "/minhas-consultas" },
+    { icon: Heart, label: "Favoritos", path: "/favoritos" },
     { icon: User, label: "Meus Pets", path: "/meus-pets" },
+    { icon: Users, label: "Clínicas", path: "/clinicas" },
+    { icon: FileText, label: "Prontuários", path: "/prontuarios" },
     { icon: Clock, label: "Histórico", path: "/historico" },
     { icon: MessageSquare, label: "Mensagens", path: "/mensagens" },
     { icon: User, label: "Meu Perfil", path: "/perfil" },
@@ -54,6 +60,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: MessageSquare, label: "Mensagens", path: "/mensagens" },
     { icon: Clock, label: "Meus Horários", path: "/meus-horarios" },
     { icon: List, label: "Histórico", path: "/historico-atendimentos" },
+    { icon: Users, label: "VetConnect", path: "/vetconnect" },
+    { icon: Bell, label: "Módulos", path: "/modulos" },
     { icon: User, label: "Meu Perfil", path: "/perfil" },
   ];
 

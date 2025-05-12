@@ -1,306 +1,450 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { agendamentosMock, veterinariosMock, petsMock } from "@/data/mockData";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Search, Send, User } from "lucide-react";
+import { veterinariosMock } from "@/data/mockData";
 
-// Mock data para usuários
-const usuariosMock = [
-  ...veterinariosMock.map(v => ({
-    id: v.id,
-    nome: v.nome,
-    tipo: 'vet',
-    online: Math.random() > 0.5,
-    ultimaVisto: new Date().toISOString()
-  })),
-  ...petsMock.map(p => ({
-    id: p.clientId,
-    nome: `Tutor de ${p.nome}`,
-    tipo: 'client',
-    online: Math.random() > 0.5,
-    ultimaVisto: new Date().toISOString()
-  }))
-];
+interface Mensagem {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  conteudo: string;
+  dataHora: Date;
+  lida: boolean;
+}
 
-// Mock data para mensagens
-const mockMensagens: Record<string, Array<{id: string; senderId: string; text: string; timestamp: string}>> = {};
-
-// Preenche mensagens mock para cada usuário
-usuariosMock.forEach(usuario => {
-  if (usuario.id === '1') return; // Evita conversa consigo mesmo
-  
-  const numMensagens = Math.floor(Math.random() * 10) + 1;
-  const mensagens = [];
-  
-  for (let i = 0; i < numMensagens; i++) {
-    const isUser = Math.random() > 0.5;
-    const hoursAgo = Math.floor(Math.random() * 48);
-    mensagens.push({
-      id: `msg-${usuario.id}-${i}`,
-      senderId: isUser ? '1' : usuario.id,
-      text: isUser 
-        ? `Esta é uma mensagem enviada para ${usuario.nome}. #${i}` 
-        : `Esta é uma mensagem recebida de ${usuario.nome}. #${i}`,
-      timestamp: new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
-    });
-  }
-  
-  // Ordena mensagens por timestamp
-  mensagens.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  mockMensagens[usuario.id] = mensagens;
-});
+interface Conversa {
+  id: string;
+  nome: string;
+  ultimaMensagem: string;
+  dataHora: Date;
+  naoLidas: number;
+  online: boolean;
+  avatar?: string;
+}
 
 const Mensagens = () => {
   const { user, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [selectedUser, setSelectedUser] = useState<string | null>(searchParams.get('userId'));
-  const [mensagem, setMensagem] = useState("");
-  const [mensagens, setMensagens] = useState<typeof mockMensagens>({});
+  const [conversaSelecionada, setConversaSelecionada] = useState<string | null>(null);
+  const [novaMensagem, setNovaMensagem] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isVet = profile?.tipo === 'vet';
-
-  // Inicializa mensagens do mock
-  useEffect(() => {
-    setMensagens(mockMensagens);
-  }, []);
-
-  // Scroll para a última mensagem
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedUser, mensagens]);
-
-  // Usuários filtrados baseado na busca e no tipo de usuário (vet vê clientes, cliente vê vets)
-  const usuariosFiltrados = usuariosMock.filter(u => {
-    // Filtra por tipo oposto ao do usuário logado
-    const tipoMatch = isVet ? u.tipo === 'client' : u.tipo === 'vet';
-    
-    // Filtra pela busca
-    const searchMatch = !searchTerm || 
-      u.nome.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return tipoMatch && searchMatch && u.id !== user?.id;
+  
+  // Mock data for conversations
+  const [conversas, setConversas] = useState<Conversa[]>([
+    {
+      id: veterinariosMock[0].id,
+      nome: `Dr. ${veterinariosMock[0].nome}`,
+      ultimaMensagem: "Olá! Como posso ajudar?",
+      dataHora: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
+      naoLidas: 1,
+      online: true
+    },
+    {
+      id: veterinariosMock[1].id,
+      nome: `Dr. ${veterinariosMock[1].nome}`,
+      ultimaMensagem: "Seu pet está bem, não se preocupe!",
+      dataHora: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      naoLidas: 0,
+      online: false
+    },
+    {
+      id: veterinariosMock[2].id,
+      nome: `Dr. ${veterinariosMock[2].nome}`,
+      ultimaMensagem: "O exame ficou pronto. Vou te enviar.",
+      dataHora: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+      naoLidas: 0,
+      online: false
+    }
+  ]);
+  
+  // Mock data for messages
+  const [mensagens, setMensagens] = useState<Record<string, Mensagem[]>>({
+    [veterinariosMock[0].id]: [
+      {
+        id: "1",
+        senderId: veterinariosMock[0].id,
+        receiverId: user?.id || "",
+        conteudo: "Olá! Como posso ajudar?",
+        dataHora: new Date(Date.now() - 1000 * 60 * 5),
+        lida: false
+      }
+    ],
+    [veterinariosMock[1].id]: [
+      {
+        id: "2",
+        senderId: veterinariosMock[1].id,
+        receiverId: user?.id || "",
+        conteudo: "Bom dia! Recebi os resultados do exame do seu pet.",
+        dataHora: new Date(Date.now() - 1000 * 60 * 65),
+        lida: true
+      },
+      {
+        id: "3",
+        senderId: user?.id || "",
+        receiverId: veterinariosMock[1].id,
+        conteudo: "Obrigado! E como está?",
+        dataHora: new Date(Date.now() - 1000 * 60 * 63),
+        lida: true
+      },
+      {
+        id: "4",
+        senderId: veterinariosMock[1].id,
+        receiverId: user?.id || "",
+        conteudo: "Seu pet está bem, não se preocupe!",
+        dataHora: new Date(Date.now() - 1000 * 60 * 60),
+        lida: true
+      }
+    ],
+    [veterinariosMock[2].id]: [
+      {
+        id: "5",
+        senderId: veterinariosMock[2].id,
+        receiverId: user?.id || "",
+        conteudo: "Olá, estou enviando a prescrição do seu pet.",
+        dataHora: new Date(Date.now() - 1000 * 60 * 60 * 25),
+        lida: true
+      },
+      {
+        id: "6",
+        senderId: user?.id || "",
+        receiverId: veterinariosMock[2].id,
+        conteudo: "Obrigado! E quando ficará pronto o exame que solicitou?",
+        dataHora: new Date(Date.now() - 1000 * 60 * 60 * 24.5),
+        lida: true
+      },
+      {
+        id: "7",
+        senderId: veterinariosMock[2].id,
+        receiverId: user?.id || "",
+        conteudo: "O exame ficou pronto. Vou te enviar.",
+        dataHora: new Date(Date.now() - 1000 * 60 * 60 * 24),
+        lida: true
+      }
+    ]
   });
-
-  // Função para enviar mensagem
+  
+  // Check if there's a userId in the URL params to open a specific chat
+  useEffect(() => {
+    const userIdParam = searchParams.get('userId');
+    if (userIdParam) {
+      setConversaSelecionada(userIdParam);
+      
+      // Mark messages as read
+      if (mensagens[userIdParam]) {
+        setMensagens(prev => ({
+          ...prev,
+          [userIdParam]: prev[userIdParam].map(msg => ({
+            ...msg,
+            lida: true
+          }))
+        }));
+        
+        // Update unread count in conversation list
+        setConversas(prev => prev.map(conv => 
+          conv.id === userIdParam ? { ...conv, naoLidas: 0 } : conv
+        ));
+      }
+    }
+  }, [searchParams]);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [mensagens, conversaSelecionada]);
+  
   const enviarMensagem = () => {
-    if (!mensagem.trim() || !selectedUser) return;
+    if (!conversaSelecionada || !novaMensagem.trim()) return;
     
-    const novaMensagem = {
+    const novaMensagemObj: Mensagem = {
       id: `msg-${Date.now()}`,
-      senderId: user?.id || '',
-      text: mensagem,
-      timestamp: new Date().toISOString()
+      senderId: user?.id || "",
+      receiverId: conversaSelecionada,
+      conteudo: novaMensagem,
+      dataHora: new Date(),
+      lida: false
     };
     
+    // Add message to the conversation
     setMensagens(prev => ({
       ...prev,
-      [selectedUser]: [...(prev[selectedUser] || []), novaMensagem]
+      [conversaSelecionada]: [...(prev[conversaSelecionada] || []), novaMensagemObj]
     }));
     
-    setMensagem("");
+    // Update conversation preview
+    setConversas(prev => prev.map(conv => 
+      conv.id === conversaSelecionada 
+        ? { 
+            ...conv, 
+            ultimaMensagem: novaMensagem,
+            dataHora: new Date()
+          } 
+        : conv
+    ));
+    
+    setNovaMensagem("");
+    
+    // Simulate reply after 2 seconds
+    setTimeout(() => {
+      const resposta: Mensagem = {
+        id: `msg-${Date.now() + 1}`,
+        senderId: conversaSelecionada,
+        receiverId: user?.id || "",
+        conteudo: "Obrigado pela mensagem! Vou verificar e retornar em breve.",
+        dataHora: new Date(),
+        lida: false
+      };
+      
+      setMensagens(prev => ({
+        ...prev,
+        [conversaSelecionada]: [...(prev[conversaSelecionada] || []), resposta]
+      }));
+      
+      // Update conversation preview
+      setConversas(prev => prev.map(conv => 
+        conv.id === conversaSelecionada 
+          ? { 
+              ...conv, 
+              ultimaMensagem: resposta.conteudo,
+              dataHora: new Date(),
+              naoLidas: conv.id !== conversaSelecionada ? conv.naoLidas + 1 : 0
+            } 
+          : conv
+      ));
+    }, 2000);
   };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      enviarMensagem();
+  
+  const selecionarConversa = (conversaId: string) => {
+    setConversaSelecionada(conversaId);
+    setSearchParams({ userId: conversaId });
+    
+    // Mark messages as read
+    setMensagens(prev => ({
+      ...prev,
+      [conversaId]: prev[conversaId]?.map(msg => ({
+        ...msg,
+        lida: true
+      })) || []
+    }));
+    
+    // Update unread count in conversation list
+    setConversas(prev => prev.map(conv => 
+      conv.id === conversaId ? { ...conv, naoLidas: 0 } : conv
+    ));
+  };
+  
+  const filteredConversas = conversas.filter(conversa => 
+    conversa.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / (1000 * 60));
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 60) {
+      return `${diffMins}m`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h`;
+    } else {
+      return `${diffDays}d`;
     }
   };
-
-  const formatarHora = (timestamp: string) => {
-    return format(new Date(timestamp), 'HH:mm');
+  
+  // Format date for messages
+  const formatMessageTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-  const formatarData = (timestamp: string) => {
-    return format(new Date(timestamp), "dd 'de' MMMM", { locale: ptBR });
-  };
-
-  const formatarStatusOnline = (usuario: any) => {
-    if (usuario.online) return 'Online';
-    
-    const ultimaVisto = new Date(usuario.ultimaVisto);
-    const agora = new Date();
-    const diferencaHoras = Math.floor((agora.getTime() - ultimaVisto.getTime()) / (1000 * 60 * 60));
-    
-    if (diferencaHoras < 1) return 'Visto há pouco';
-    if (diferencaHoras < 24) return `Visto há ${diferencaHoras}h`;
-    return `Visto em ${format(ultimaVisto, 'dd/MM')}`;
-  };
-
-  const getNomeUsuario = (id: string) => {
-    const usuario = usuariosMock.find(u => u.id === id);
-    return usuario ? usuario.nome : 'Usuário';
+  
+  // Get the first letter of each name word for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
   };
 
   return (
     <DashboardLayout>
-      <div className="h-full">
-        <h1 className="text-3xl font-bold mb-6">Mensagens</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 h-[calc(100vh-220px)]">
-          {/* Lista de Contatos */}
-          <Card className="h-full flex flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Conversas</CardTitle>
-              <div className="relative mb-2">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar contatos..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto pb-0">
-              <div className="space-y-2">
-                {usuariosFiltrados.map((usuario) => (
-                  <div
-                    key={usuario.id}
-                    className={`flex items-center p-2 rounded-md cursor-pointer transition-colors
-                      ${selectedUser === usuario.id ? 'bg-primary/10' : 'hover:bg-muted'}`}
-                    onClick={() => {
-                      setSelectedUser(usuario.id);
-                      setSearchParams({ userId: usuario.id });
-                    }}
-                  >
-                    <div className="relative mr-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full 
-                        ${usuario.online ? 'bg-green-500' : 'bg-gray-400'}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline">
-                        <h3 className="font-medium text-sm truncate">{usuario.nome}</h3>
-                        <span className="text-xs text-muted-foreground">
-                          {(mensagens[usuario.id]?.length ?? 0) > 0 ? formatarHora(mensagens[usuario.id]![mensagens[usuario.id]!.length - 1].timestamp) : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span className="truncate">
-                          {formatarStatusOnline(usuario)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {usuariosFiltrados.length === 0 && (
-                  <div className="text-center py-6 text-muted-foreground">
-                    Nenhum contato encontrado
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex h-[calc(100vh-6rem)] overflow-hidden">
+        {/* Conversation List */}
+        <div className="w-full md:w-80 border-r flex flex-col">
+          <div className="p-4 border-b">
+            <h2 className="text-xl font-bold mb-4">Mensagens</h2>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Buscar conversas..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
           
-          {/* Área de Chat */}
-          <Card className="h-full flex flex-col">
-            {selectedUser ? (
-              <>
-                <CardHeader className="pb-3 border-b">
-                  <div className="flex items-center">
-                    <div className="relative mr-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full 
-                        ${usuariosMock.find(u => u.id === selectedUser)?.online ? 'bg-green-500' : 'bg-gray-400'}`} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">
-                        {getNomeUsuario(selectedUser)}
-                      </CardTitle>
-                      <div className="text-xs text-muted-foreground">
-                        {formatarStatusOnline(usuariosMock.find(u => u.id === selectedUser) || {})}
-                      </div>
-                    </div>
+          <div className="flex-1 overflow-y-auto">
+            {filteredConversas.length > 0 ? (
+              filteredConversas.map((conversa) => (
+                <div
+                  key={conversa.id}
+                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted ${
+                    conversaSelecionada === conversa.id ? 'bg-muted' : ''
+                  }`}
+                  onClick={() => selecionarConversa(conversa.id)}
+                >
+                  <div className="relative">
+                    <Avatar>
+                      <AvatarImage src={conversa.avatar} />
+                      <AvatarFallback>{getInitials(conversa.nome)}</AvatarFallback>
+                    </Avatar>
+                    {conversa.online && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
+                    )}
                   </div>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto py-4">
-                  {mensagens[selectedUser]?.length ? (
-                    <div className="space-y-4">
-                      {mensagens[selectedUser].map((msg, i) => {
-                        const isSender = msg.senderId === user?.id;
-                        const showDate = i === 0 || 
-                          new Date(msg.timestamp).toDateString() !== new Date(mensagens[selectedUser][i-1].timestamp).toDateString();
-                        
-                        return (
-                          <div key={msg.id}>
-                            {showDate && (
-                              <div className="text-center my-4">
-                                <span className="text-xs bg-muted py-1 px-2 rounded-full">
-                                  {formatarData(msg.timestamp)}
-                                </span>
-                              </div>
-                            )}
-                            <div className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}>
-                              <div 
-                                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                                  isSender ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                                }`}
-                              >
-                                <div className="text-sm">{msg.text}</div>
-                                <div className="text-xs text-right mt-1 opacity-70">
-                                  {formatarHora(msg.timestamp)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div ref={messagesEndRef} />
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                      <h3 className="font-medium truncate">{conversa.nome}</h3>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatTimeAgo(conversa.dataHora)}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <p className="text-muted-foreground mb-2">Nenhuma mensagem ainda</p>
-                        <p className="text-sm text-muted-foreground">
-                          Envie uma mensagem para iniciar a conversa.
-                        </p>
-                      </div>
-                    </div>
+                    <p className="text-sm truncate text-muted-foreground">
+                      {conversa.ultimaMensagem}
+                    </p>
+                  </div>
+                  
+                  {conversa.naoLidas > 0 && (
+                    <Badge className="bg-primary h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                      {conversa.naoLidas}
+                    </Badge>
                   )}
-                </CardContent>
-                <div className="p-4 border-t">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Digite sua mensagem..."
-                      value={mensagem}
-                      onChange={(e) => setMensagem(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      className="flex-1"
-                    />
-                    <Button onClick={enviarMensagem} disabled={!mensagem.trim()}>
-                      <Send className="h-4 w-4" />
-                      <span className="sr-only">Enviar</span>
-                    </Button>
-                  </div>
                 </div>
-              </>
+              ))
             ) : (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-2">Selecione uma conversa</p>
-                  <p className="text-sm text-muted-foreground">
-                    Escolha um contato para iniciar ou continuar uma conversa.
+              <div className="p-4 text-center text-muted-foreground">
+                {searchTerm 
+                  ? "Nenhuma conversa encontrada" 
+                  : "Nenhuma conversa iniciada"}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col">
+          {conversaSelecionada ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b flex items-center gap-3">
+                <div className="relative">
+                  <Avatar>
+                    <AvatarFallback>
+                      {getInitials(conversas.find(c => c.id === conversaSelecionada)?.nome || "")}
+                    </AvatarFallback>
+                  </Avatar>
+                  {conversas.find(c => c.id === conversaSelecionada)?.online && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="font-medium">
+                    {conversas.find(c => c.id === conversaSelecionada)?.nome}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {conversas.find(c => c.id === conversaSelecionada)?.online 
+                      ? "Online" 
+                      : "Offline"}
                   </p>
                 </div>
               </div>
-            )}
-          </Card>
+              
+              {/* Messages */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  {mensagens[conversaSelecionada]?.map((msg) => {
+                    const isSender = msg.senderId === user?.id;
+                    
+                    return (
+                      <div 
+                        key={msg.id}
+                        className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div 
+                          className={`max-w-[80%] rounded-lg p-3 ${
+                            isSender 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted text-foreground'
+                          }`}
+                        >
+                          <p>{msg.conteudo}</p>
+                          <div className={`text-xs mt-1 ${isSender ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                            {formatMessageTime(msg.dataHora)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+              
+              {/* Message Input */}
+              <div className="p-4 border-t">
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Digite sua mensagem..."
+                    className="resize-none"
+                    value={novaMensagem}
+                    onChange={(e) => setNovaMensagem(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        enviarMensagem();
+                      }
+                    }}
+                  />
+                  <Button 
+                    className="flex-shrink-0" 
+                    onClick={enviarMensagem}
+                    disabled={!novaMensagem.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <Card className="w-[80%] max-w-md">
+                <CardHeader>
+                  <CardTitle className="text-center">Conversas</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Selecione uma conversa para começar a conversar ou inicie uma nova conversa.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

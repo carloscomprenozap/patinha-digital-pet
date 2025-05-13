@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -13,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { petsMock } from "@/data/mockData";
+import { Pet } from "@/types";
 
 const MeusPets = () => {
   const navigate = useNavigate();
@@ -26,11 +26,20 @@ const MeusPets = () => {
   const userId = "u1"; // Mock user ID  
   const [pets, setPets] = useState(petsMock.filter(pet => pet.clientId === userId));
   
-  // Form state
-  const [currentPet, setCurrentPet] = useState({
+  // Form state with modified structure to match Pet type
+  const [currentPet, setCurrentPet] = useState<{
+    id: string;
+    nome: string;
+    especie: "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro";
+    raca: string;
+    idade: number;
+    peso: number;
+    observacoes?: string; // Make observacoes optional to match Pet type
+    clientId: string;
+  }>({
     id: "",
     nome: "",
-    especie: "cachorro" as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
+    especie: "cachorro",
     raca: "",
     idade: 0,
     peso: 0,
@@ -87,13 +96,19 @@ const MeusPets = () => {
     });
   };
   
-  const handleOpenEditDialog = (pet: typeof currentPet) => {
-    setCurrentPet(pet);
+  const handleOpenEditDialog = (pet: Pet) => {
+    setCurrentPet({
+      ...pet,
+      observacoes: pet.observacoes || "" // Handle the case where observacoes might be undefined
+    });
     setIsEditDialogOpen(true);
   };
   
-  const handleOpenDeleteDialog = (pet: typeof currentPet) => {
-    setCurrentPet(pet);
+  const handleOpenDeleteDialog = (pet: Pet) => {
+    setCurrentPet({
+      ...pet,
+      observacoes: pet.observacoes || "" // Handle the case where observacoes might be undefined
+    });
     setIsDeleteDialogOpen(true);
   };
   

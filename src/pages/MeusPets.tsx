@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,43 +10,75 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { petsMock } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Pet } from "@/types";
 
 const MeusPets = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   
-  // Mock data for user pets
-  const userId = "u1"; // Mock user ID  
-  const [pets, setPets] = useState(petsMock.filter(pet => pet.clientId === userId));
+  // Estado para armazenar os pets do usuário
+  const [pets, setPets] = useState<Pet[]>([]);
   
-  // Form state with modified structure to match Pet type
+  // Formulário para o pet atual
   const [currentPet, setCurrentPet] = useState<{
-    id: string;
+    id?: string;
     nome: string;
     especie: "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro";
     raca: string;
     idade: number;
     peso: number;
-    observacoes?: string; // Make observacoes optional to match Pet type
-    clientId: string;
+    observacoes?: string;
+    client_id?: string;
   }>({
-    id: "",
     nome: "",
     especie: "cachorro",
     raca: "",
     idade: 0,
     peso: 0,
     observacoes: "",
-    clientId: userId
   });
+  
+  // Carregar pets do usuário
+  useEffect(() => {
+    const fetchPets = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("pets")
+          .select("*")
+          .eq("client_id", user.id);
+        
+        if (error) {
+          throw error;
+        }
+        
+        setPets(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar pets:", error);
+        toast({
+          variant: "destructive",
+          description: "Não foi possível carregar seus pets. Tente novamente mais tarde.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPets();
+  }, [user]);
   
   const filteredPets = searchTerm 
     ? pets.filter(pet => 
@@ -55,59 +88,148 @@ const MeusPets = () => {
       )
     : pets;
   
-  const handleAddPet = () => {
-    const newPet = {
-      ...currentPet,
-      id: `p${pets.length + 1}`
-    };
+  const handleAddPet = async () => {
+    if (!user) return;
     
-    setPets([...pets, newPet]);
-    setIsAddDialogOpen(false);
-    toast({
-      description: "Pet adicionado com sucesso!",
-    });
-    
-    // Reset form
-    setCurrentPet({
-      id: "",
-      nome: "",
-      especie: "cachorro",
-      raca: "",
-      idade: 0,
-      peso: 0,
-      observacoes: "",
-      clientId: userId
-    });
+    try {
+      setSubmitting(true);
+      
+      const newPet = {
+        ...currentPet,
+        client_id: user.id
+      };
+      
+      const { data, error } = await supabase
+        .from("pets")
+        .insert(newPet)
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      setPets([...pets, data]);
+      setIsAddDialogOpen(false);
+      toast({
+        description: "Pet adicionado com sucesso!",
+      });
+      
+      // Reset form
+      setCurrentPet({
+        nome: "",
+        especie: "cachorro",
+        raca: "",
+        idade: 0,
+        peso: 0,
+        observacoes: "",
+      });
+    } catch (error) {
+      console.error("Erro ao adicionar pet:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao adicionar pet. Tente novamente.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
-  const handleEditPet = () => {
-    setPets(pets.map(pet => pet.id === currentPet.id ? currentPet : pet));
-    setIsEditDialogOpen(false);
-    toast({
-      description: "Pet atualizado com sucesso!",
-    });
+  const handleEditPet = async () => {
+    if (!currentPet.id) return;
+    
+    try {
+      setSubmitting(true);
+      
+      const { data, error } = await supabase
+        .from("pets")
+        .update({
+          nome: currentPet.nome,
+          especie: currentPet.especie,
+          raca: currentPet.raca,
+          idade: currentPet.idade,
+          peso: currentPet.peso,
+          observacoes: currentPet.observacoes
+        })
+        .eq("id", currentPet.id)
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      setPets(pets.map(pet => pet.id === currentPet.id ? data : pet));
+      setIsEditDialogOpen(false);
+      toast({
+        description: "Pet atualizado com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar pet:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao atualizar pet. Tente novamente.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
-  const handleDeletePet = () => {
-    setPets(pets.filter(pet => pet.id !== currentPet.id));
-    setIsDeleteDialogOpen(false);
-    toast({
-      description: "Pet removido com sucesso!",
-    });
+  const handleDeletePet = async () => {
+    if (!currentPet.id) return;
+    
+    try {
+      setSubmitting(true);
+      
+      const { error } = await supabase
+        .from("pets")
+        .delete()
+        .eq("id", currentPet.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setPets(pets.filter(pet => pet.id !== currentPet.id));
+      setIsDeleteDialogOpen(false);
+      toast({
+        description: "Pet removido com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao remover pet:", error);
+      toast({
+        variant: "destructive",
+        description: "Erro ao remover pet. Tente novamente.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   const handleOpenEditDialog = (pet: Pet) => {
     setCurrentPet({
-      ...pet,
-      observacoes: pet.observacoes || "" // Handle the case where observacoes might be undefined
+      id: pet.id,
+      nome: pet.nome,
+      especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
+      raca: pet.raca,
+      idade: pet.idade,
+      peso: pet.peso,
+      observacoes: pet.observacoes || "",
+      client_id: pet.clientId || pet.client_id
     });
     setIsEditDialogOpen(true);
   };
   
   const handleOpenDeleteDialog = (pet: Pet) => {
     setCurrentPet({
-      ...pet,
-      observacoes: pet.observacoes || "" // Handle the case where observacoes might be undefined
+      id: pet.id,
+      nome: pet.nome,
+      especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
+      raca: pet.raca,
+      idade: pet.idade,
+      peso: pet.peso,
+      observacoes: pet.observacoes || "",
+      client_id: pet.clientId || pet.client_id
     });
     setIsDeleteDialogOpen(true);
   };
@@ -232,7 +354,14 @@ const MeusPets = () => {
               
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleAddPet}>Salvar</Button>
+                <Button onClick={handleAddPet} disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : 'Salvar'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -248,7 +377,12 @@ const MeusPets = () => {
           />
         </div>
         
-        {filteredPets.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-2 text-muted-foreground">Carregando seus pets...</p>
+          </div>
+        ) : filteredPets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPets.map((pet) => (
               <Card key={pet.id} className="overflow-hidden">
@@ -416,7 +550,14 @@ const MeusPets = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleEditPet}>Salvar</Button>
+            <Button onClick={handleEditPet} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : 'Salvar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -433,7 +574,14 @@ const MeusPets = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDeletePet}>Remover</Button>
+            <Button variant="destructive" onClick={handleDeletePet} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Removendo...
+                </>
+              ) : 'Remover'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

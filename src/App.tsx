@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +24,7 @@ import Clinicas from "./pages/Clinicas";
 import Favoritos from "./pages/Favoritos";
 import Historico from "./pages/Historico";
 import MeusPets from "./pages/MeusPets";
+import MinhasConsultas from "./pages/MinhasConsultas";
 import Prontuarios from "./pages/Prontuarios";
 import VetConnect from "./pages/VetConnect";
 import Modulos from "./pages/Modulos";
@@ -154,7 +154,7 @@ const AppRoutes = () => (
       path="/minhas-consultas" 
       element={
         <ClienteRoute>
-          <Historico />
+          <MinhasConsultas />
         </ClienteRoute>
       } 
     />

@@ -36,9 +36,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const isClient = profile?.tipo === 'client';
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    }
   };
 
   const clientMenuItems = [

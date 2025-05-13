@@ -19,8 +19,9 @@ const validateStatus = (status: string): 'agendado' | 'confirmado' | 'concluido'
   return 'agendado';
 };
 
-const getBadgeVariant = (status: string) => {
-  const statusMap: Record<string, string> = {
+// Fix: Ensure this function returns only valid badge variant types
+const getBadgeVariant = (status: string): "default" | "destructive" | "outline" | "secondary" => {
+  const statusMap: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
     agendado: "outline",
     confirmado: "secondary",
     concluido: "default",

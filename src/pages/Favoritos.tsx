@@ -14,30 +14,37 @@ const Favoritos = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Mock data for favorites
-  const [favoritosClinicas, setFavoritosClinicas] = useState([
-    veterinariosMock[0].id,
-    veterinariosMock[2].id
-  ]);
+  // Mock data for favorites - make sure we have valid IDs that exist in veterinariosMock
+  // First check if veterinariosMock is defined and not empty
+  const validVetIds = Array.isArray(veterinariosMock) && veterinariosMock.length > 0
+    ? veterinariosMock.map(vet => vet.id)
+    : [];
+
+  const [favoritosClinicas, setFavoritosClinicas] = useState(
+    validVetIds.length >= 2 ? [validVetIds[0], validVetIds[1]] : []
+  );
   
-  const [favoritosVets, setFavoritosVets] = useState([
-    veterinariosMock[1].id,
-    veterinariosMock[3].id
-  ]);
+  const [favoritosVets, setFavoritosVets] = useState(
+    validVetIds.length >= 4 ? [validVetIds[2], validVetIds[3]] : []
+  );
 
-  // Generate clinic and vet data
-  const clinicas = veterinariosMock
-    .filter(vet => favoritosClinicas.includes(vet.id))
-    .map(vet => ({
-      id: vet.id,
-      nome: `Clínica Dr. ${vet.nome.split(' ')[0]}`,
-      endereco: vet.endereco,
-      telefone: vet.telefone,
-      especialidades: ["Clínica Geral", "Cirurgia", "Dermatologia"].slice(0, Math.floor(Math.random() * 3) + 1),
-      horario24h: Math.random() > 0.7
-    }));
+  // Generate clinic and vet data - with safety checks
+  const clinicas = Array.isArray(veterinariosMock)
+    ? veterinariosMock
+      .filter(vet => vet && vet.id && favoritosClinicas.includes(vet.id))
+      .map(vet => ({
+        id: vet.id,
+        nome: `Clínica Dr. ${vet.nome.split(' ')[0]}`,
+        endereco: vet.endereco,
+        telefone: vet.telefone,
+        especialidades: ["Clínica Geral", "Cirurgia", "Dermatologia"].slice(0, Math.floor(Math.random() * 3) + 1),
+        horario24h: Math.random() > 0.7
+      }))
+    : [];
 
-  const veterinarios = veterinariosMock.filter(vet => favoritosVets.includes(vet.id));
+  const veterinarios = Array.isArray(veterinariosMock)
+    ? veterinariosMock.filter(vet => vet && vet.id && favoritosVets.includes(vet.id))
+    : [];
 
   // Filter based on search term
   const filteredClinicas = clinicas.filter(clinica => 

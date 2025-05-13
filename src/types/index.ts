@@ -43,6 +43,10 @@ export interface Pet {
   peso: number;
   observacoes?: string;
   clientId: string;
+  // Adicionando campos que correspondem ao banco de dados
+  client_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Agendamento {
@@ -63,6 +67,25 @@ export interface Consulta extends Agendamento {
   recomendacoes?: string;
 }
 
+// Interface para consultas vindo do banco de dados
+export interface ConsultaDB {
+  id: string;
+  client_id: string;
+  vet_id: string;
+  pet_id: string;
+  data: string;
+  horario: string;
+  status: string;
+  observacoes?: string;
+  created_at: string;
+  updated_at: string;
+  diagnostico?: string;
+  prescricao?: string;
+  recomendacoes?: string;
+  vet_nome?: string;
+  pet_nome?: string;
+}
+
 export interface Disponibilidade {
   diaSemana: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = domingo, 6 = sábado
   horaInicio: string; // formato HH:MM
@@ -72,4 +95,16 @@ export interface Disponibilidade {
 export interface HorarioDisponivel {
   data: string; // ISO string
   horarios: string[]; // array de horários disponíveis no formato HH:MM
+}
+
+export interface ConsultaProps {
+  id: string;
+  data: string;
+  horario: string;
+  status: 'agendado' | 'confirmado' | 'concluido' | 'cancelado';
+  observacoes: string;
+  vet_id: string;
+  pet_id: string;
+  vet_nome: string;
+  pet_nome: string;
 }

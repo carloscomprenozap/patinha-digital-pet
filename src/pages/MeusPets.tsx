@@ -1,632 +1,400 @@
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { useForm } from "react-hook-form";
+import { Pet } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Edit, Trash2, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pet } from "@/types";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
+
+// Helper para validar e converter a espécie
+const validateEspecie = (especie: string): 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro' => {
+  const validEspecies = ['cachorro', 'gato', 'ave', 'roedor', 'réptil', 'outro'] as const;
+  if (validEspecies.includes(especie as any)) {
+    return especie as 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro';
+  }
+  return 'outro';
+};
 
 const MeusPets = () => {
-  const navigate = useNavigate();
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [editingPet, setEditingPet] = useState<Pet | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
   
-  // Estado para armazenar os pets do usuário
-  const [pets, setPets] = useState<Pet[]>([]);
-  
-  // Formulário para o pet atual
-  const [currentPet, setCurrentPet] = useState<{
-    id?: string;
-    nome: string;
-    especie: "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro";
-    raca: string;
-    idade: number;
-    peso: number;
-    observacoes?: string;
-    clientId?: string;
-  }>({
-    nome: "",
-    especie: "cachorro",
-    raca: "",
-    idade: 0,
-    peso: 0,
-    observacoes: "",
+  const form = useForm<Pet>({
+    defaultValues: {
+      nome: "",
+      especie: "cachorro",
+      raca: "",
+      idade: 0,
+      peso: 0,
+      observacoes: ""
+    }
   });
-  
-  // Carregar pets do usuário
+
   useEffect(() => {
-    const fetchPets = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("pets")
-          .select("*")
-          .eq("client_id", user.id);
-        
-        if (error) {
-          throw error;
-        }
-        
-        // Mapear os dados do banco para o formato esperado pelo tipo Pet
-        const formattedPets: Pet[] = (data || []).map(pet => ({
-          id: pet.id,
-          nome: pet.nome,
-          especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
-          raca: pet.raca,
-          idade: pet.idade,
-          peso: pet.peso,
-          observacoes: pet.observacoes || undefined,
-          clientId: pet.client_id
-        }));
-        
-        setPets(formattedPets);
-      } catch (error) {
-        console.error("Erro ao carregar pets:", error);
-        toast({
-          variant: "destructive",
-          description: "Não foi possível carregar seus pets. Tente novamente mais tarde.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchPets();
+    if (user) {
+      fetchPets();
+    }
   }, [user]);
-  
-  const filteredPets = searchTerm 
-    ? pets.filter(pet => 
-        pet.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pet.especie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pet.raca.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : pets;
-  
-  const handleAddPet = async () => {
+
+  const fetchPets = async () => {
     if (!user) return;
     
+    setIsLoading(true);
     try {
-      setSubmitting(true);
-      
-      const newPet = {
-        nome: currentPet.nome,
-        especie: currentPet.especie,
-        raca: currentPet.raca,
-        idade: currentPet.idade,
-        peso: currentPet.peso,
-        observacoes: currentPet.observacoes,
-        client_id: user.id  // Usar client_id para o Supabase
-      };
-      
       const { data, error } = await supabase
         .from("pets")
-        .insert(newPet)
-        .select()
-        .single();
+        .select("*")
+        .eq("client_id", user.id);
       
       if (error) {
         throw error;
       }
+
+      // Map do banco para o formato da aplicação
+      const formattedPets = data.map(pet => ({
+        ...pet,
+        clientId: pet.client_id,
+        especie: validateEspecie(pet.especie)
+      }));
       
-      // Converter para o formato Pet
-      const formattedPet: Pet = {
-        id: data.id,
-        nome: data.nome,
-        especie: data.especie,
-        raca: data.raca,
-        idade: data.idade,
-        peso: data.peso,
-        observacoes: data.observacoes || undefined,
-        clientId: data.client_id
-      };
-      
-      setPets([...pets, formattedPet]);
-      setIsAddDialogOpen(false);
+      setPets(formattedPets as Pet[]);
+    } catch (error) {
+      console.error("Erro ao buscar pets:", error);
       toast({
-        description: "Pet adicionado com sucesso!",
+        title: "Erro",
+        description: "Não foi possível carregar seus pets.",
+        variant: "destructive",
       });
-      
-      // Reset form
-      setCurrentPet({
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openModal = (pet?: Pet) => {
+    if (pet) {
+      form.reset({
+        ...pet,
+        especie: validateEspecie(pet.especie)
+      });
+      setEditingPet(pet);
+    } else {
+      form.reset({
         nome: "",
         especie: "cachorro",
         raca: "",
         idade: 0,
         peso: 0,
-        observacoes: "",
+        observacoes: ""
       });
-    } catch (error) {
-      console.error("Erro ao adicionar pet:", error);
-      toast({
-        variant: "destructive",
-        description: "Erro ao adicionar pet. Tente novamente.",
-      });
-    } finally {
-      setSubmitting(false);
+      setEditingPet(null);
     }
+    setIsModalOpen(true);
   };
-  
-  const handleEditPet = async () => {
-    if (!currentPet.id) return;
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    form.reset();
+  };
+
+  const onSubmit = async (data: Pet) => {
+    if (!user) return;
     
+    setIsLoading(true);
     try {
-      setSubmitting(true);
-      
-      const updateData = {
-        nome: currentPet.nome,
-        especie: currentPet.especie,
-        raca: currentPet.raca,
-        idade: currentPet.idade,
-        peso: currentPet.peso,
-        observacoes: currentPet.observacoes
-      };
-      
-      const { data, error } = await supabase
-        .from("pets")
-        .update(updateData)
-        .eq("id", currentPet.id)
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Converter para o formato Pet
-      const formattedPet: Pet = {
-        id: data.id,
+      const petData = {
         nome: data.nome,
-        especie: data.especie,
+        especie: validateEspecie(data.especie),
         raca: data.raca,
         idade: data.idade,
         peso: data.peso,
-        observacoes: data.observacoes || undefined,
-        clientId: data.client_id
+        observacoes: data.observacoes || "",
+        client_id: user.id
       };
-      
-      setPets(pets.map(pet => pet.id === currentPet.id ? formattedPet : pet));
-      setIsEditDialogOpen(false);
+
+      let result;
+      if (editingPet) {
+        // Atualizar pet existente
+        result = await supabase
+          .from("pets")
+          .update(petData)
+          .eq("id", editingPet.id);
+      } else {
+        // Criar novo pet
+        result = await supabase
+          .from("pets")
+          .insert([petData]);
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
+
       toast({
-        description: "Pet atualizado com sucesso!",
+        title: editingPet ? "Pet atualizado" : "Pet cadastrado",
+        description: editingPet
+          ? "Informações do pet atualizadas com sucesso."
+          : "Pet cadastrado com sucesso.",
       });
+
+      closeModal();
+      fetchPets();
     } catch (error) {
-      console.error("Erro ao atualizar pet:", error);
+      console.error("Erro ao salvar pet:", error);
       toast({
+        title: "Erro",
+        description: "Não foi possível salvar as informações do pet.",
         variant: "destructive",
-        description: "Erro ao atualizar pet. Tente novamente.",
       });
     } finally {
-      setSubmitting(false);
+      setIsLoading(false);
     }
   };
-  
-  const handleDeletePet = async () => {
-    if (!currentPet.id) return;
-    
+
+  const handleDelete = async (petId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este pet?")) return;
+
+    setIsLoading(true);
     try {
-      setSubmitting(true);
-      
       const { error } = await supabase
         .from("pets")
         .delete()
-        .eq("id", currentPet.id);
+        .eq("id", petId);
       
       if (error) {
         throw error;
       }
+
+      setPets(pets.filter(pet => pet.id !== petId));
       
-      setPets(pets.filter(pet => pet.id !== currentPet.id));
-      setIsDeleteDialogOpen(false);
       toast({
-        description: "Pet removido com sucesso!",
+        title: "Pet removido",
+        description: "O pet foi removido com sucesso.",
       });
     } catch (error) {
-      console.error("Erro ao remover pet:", error);
+      console.error("Erro ao excluir pet:", error);
       toast({
+        title: "Erro",
+        description: "Não foi possível excluir o pet.",
         variant: "destructive",
-        description: "Erro ao remover pet. Tente novamente.",
       });
     } finally {
-      setSubmitting(false);
+      setIsLoading(false);
     }
-  };
-  
-  const handleOpenEditDialog = (pet: Pet) => {
-    setCurrentPet({
-      id: pet.id,
-      nome: pet.nome,
-      especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
-      raca: pet.raca,
-      idade: pet.idade,
-      peso: pet.peso,
-      observacoes: pet.observacoes || "",
-      clientId: pet.clientId
-    });
-    setIsEditDialogOpen(true);
-  };
-  
-  const handleOpenDeleteDialog = (pet: Pet) => {
-    setCurrentPet({
-      id: pet.id,
-      nome: pet.nome,
-      especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
-      raca: pet.raca,
-      idade: pet.idade,
-      peso: pet.peso,
-      observacoes: pet.observacoes || "",
-      clientId: pet.clientId
-    });
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const handleVerProntuario = (petId: string) => {
-    navigate(`/prontuario?petId=${petId}`);
-  };
-  
-  const getEspecieLabel = (especie: string) => {
-    const especies = {
-      cachorro: "Cachorro",
-      gato: "Gato",
-      ave: "Ave",
-      roedor: "Roedor",
-      reptil: "Réptil",
-      outro: "Outro"
-    };
-    return especies[especie as keyof typeof especies] || especie;
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Meus Pets</h1>
-            <p className="text-muted-foreground">
-              Gerencie as informações dos seus pets
-            </p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Meus Pets</h1>
+          <Button onClick={() => openModal()}>Adicionar Pet</Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center p-8">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
           </div>
-          
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Adicionar Pet
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Adicionar Pet</DialogTitle>
-                <DialogDescription>
-                  Preencha as informações do seu pet
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="nome">Nome</Label>
-                  <Input 
-                    id="nome" 
-                    value={currentPet.nome} 
-                    onChange={e => setCurrentPet({...currentPet, nome: e.target.value})} 
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="especie">Espécie</Label>
-                    <Select 
-                      value={currentPet.especie} 
-                      onValueChange={value => setCurrentPet({...currentPet, especie: value as typeof currentPet.especie})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="cachorro">Cachorro</SelectItem>
-                          <SelectItem value="gato">Gato</SelectItem>
-                          <SelectItem value="ave">Ave</SelectItem>
-                          <SelectItem value="roedor">Roedor</SelectItem>
-                          <SelectItem value="réptil">Réptil</SelectItem>
-                          <SelectItem value="outro">Outro</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="raca">Raça</Label>
-                    <Input 
-                      id="raca" 
-                      value={currentPet.raca} 
-                      onChange={e => setCurrentPet({...currentPet, raca: e.target.value})} 
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="idade">Idade (anos)</Label>
-                    <Input 
-                      id="idade" 
-                      type="number" 
-                      value={currentPet.idade} 
-                      onChange={e => setCurrentPet({...currentPet, idade: parseInt(e.target.value) || 0})} 
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="peso">Peso (kg)</Label>
-                    <Input 
-                      id="peso" 
-                      type="number" 
-                      step="0.1" 
-                      value={currentPet.peso} 
-                      onChange={e => setCurrentPet({...currentPet, peso: parseFloat(e.target.value) || 0})} 
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="observacoes">Observações</Label>
-                  <Textarea 
-                    id="observacoes" 
-                    value={currentPet.observacoes || ""} 
-                    onChange={e => setCurrentPet({...currentPet, observacoes: e.target.value})} 
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleAddPet} disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : 'Salvar'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-        
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input
-            placeholder="Buscar pets por nome, espécie ou raça..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        
-        {loading ? (
+        ) : pets.length === 0 ? (
           <div className="text-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="mt-2 text-muted-foreground">Carregando seus pets...</p>
+            <h3 className="text-xl font-medium">Nenhum pet cadastrado</h3>
+            <p className="text-muted-foreground mt-2">Adicione um pet para começar</p>
           </div>
-        ) : filteredPets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPets.map((pet) => (
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pets.map((pet) => (
               <Card key={pet.id} className="overflow-hidden">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{pet.nome}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {getEspecieLabel(pet.especie)} • {pet.raca}
-                      </CardDescription>
-                    </div>
-                  </div>
+                <CardHeader className="pb-2">
+                  <CardTitle>{pet.nome}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Idade:</span>
-                    <span>{pet.idade} {pet.idade === 1 ? 'ano' : 'anos'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Peso:</span>
-                    <span>{pet.peso} kg</span>
-                  </div>
-                  {pet.observacoes && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Observações:</span>
-                      <p className="mt-1">{pet.observacoes}</p>
+                <CardContent className="pb-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Espécie:</span>
+                      <span>{pet.especie}</span>
                     </div>
-                  )}
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleOpenEditDialog(pet)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleOpenDeleteDialog(pet)}
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
-                    </Button>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Raça:</span>
+                      <span>{pet.raca}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Idade:</span>
+                      <span>{pet.idade} anos</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Peso:</span>
+                      <span>{pet.peso} kg</span>
+                    </div>
+                    {pet.observacoes && (
+                      <div className="mt-2">
+                        <span className="font-semibold">Observações:</span>
+                        <p className="text-sm text-muted-foreground">{pet.observacoes}</p>
+                      </div>
+                    )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleVerProntuario(pet.id)}
-                  >
-                    <FileText className="h-4 w-4 mr-1" />
-                    Prontuário
+                </CardContent>
+                <div className="flex justify-between p-4">
+                  <Button size="sm" onClick={() => openModal(pet)}>
+                    Editar
                   </Button>
-                </CardFooter>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(pet.id)}
+                  >
+                    Excluir
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-10">
-            <p className="text-muted-foreground mb-4">
-              {searchTerm ? "Nenhum pet encontrado com os termos da busca" : "Você ainda não cadastrou nenhum pet"}
-            </p>
-            {searchTerm && (
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => setSearchTerm("")}
-              >
-                Limpar busca
-              </Button>
-            )}
+        )}
+
+        {/* Modal para adicionar/editar pet */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <Card className="max-w-md w-full p-6">
+              <CardHeader className="pb-2">
+                <CardTitle>{editingPet ? "Editar Pet" : "Adicionar Pet"}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="nome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome do pet" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="especie"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Espécie</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a espécie" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="cachorro">Cachorro</SelectItem>
+                              <SelectItem value="gato">Gato</SelectItem>
+                              <SelectItem value="ave">Ave</SelectItem>
+                              <SelectItem value="roedor">Roedor</SelectItem>
+                              <SelectItem value="réptil">Réptil</SelectItem>
+                              <SelectItem value="outro">Outro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="raca"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Raça</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Raça do pet" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="idade"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Idade</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Idade"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="peso"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Peso (kg)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Peso"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="observacoes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Observações</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Observações adicionais"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={closeModal}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? "Salvando..." : "Salvar"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Pet</DialogTitle>
-            <DialogDescription>
-              Atualize as informações do seu pet
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="nome-edit">Nome</Label>
-              <Input 
-                id="nome-edit" 
-                value={currentPet.nome} 
-                onChange={e => setCurrentPet({...currentPet, nome: e.target.value})} 
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="especie-edit">Espécie</Label>
-                <Select 
-                  value={currentPet.especie} 
-                  onValueChange={value => setCurrentPet({...currentPet, especie: value as typeof currentPet.especie})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="cachorro">Cachorro</SelectItem>
-                      <SelectItem value="gato">Gato</SelectItem>
-                      <SelectItem value="ave">Ave</SelectItem>
-                      <SelectItem value="roedor">Roedor</SelectItem>
-                      <SelectItem value="réptil">Réptil</SelectItem>
-                      <SelectItem value="outro">Outro</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="raca-edit">Raça</Label>
-                <Input 
-                  id="raca-edit" 
-                  value={currentPet.raca} 
-                  onChange={e => setCurrentPet({...currentPet, raca: e.target.value})} 
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="idade-edit">Idade (anos)</Label>
-                <Input 
-                  id="idade-edit" 
-                  type="number" 
-                  value={currentPet.idade} 
-                  onChange={e => setCurrentPet({...currentPet, idade: parseInt(e.target.value) || 0})} 
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="peso-edit">Peso (kg)</Label>
-                <Input 
-                  id="peso-edit" 
-                  type="number" 
-                  step="0.1" 
-                  value={currentPet.peso} 
-                  onChange={e => setCurrentPet({...currentPet, peso: parseFloat(e.target.value) || 0})} 
-                />
-              </div>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="observacoes-edit">Observações</Label>
-              <Textarea 
-                id="observacoes-edit" 
-                value={currentPet.observacoes || ""} 
-                onChange={e => setCurrentPet({...currentPet, observacoes: e.target.value})} 
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleEditPet} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remover Pet</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja remover o pet "{currentPet.nome}"? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDeletePet} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Removendo...
-                </>
-              ) : 'Remover'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 };

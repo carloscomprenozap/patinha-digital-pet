@@ -5,7 +5,6 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +38,7 @@ const MeusPets = () => {
     idade: number;
     peso: number;
     observacoes?: string;
-    client_id?: string;
+    clientId?: string;
   }>({
     nome: "",
     especie: "cachorro",
@@ -65,7 +64,19 @@ const MeusPets = () => {
           throw error;
         }
         
-        setPets(data || []);
+        // Mapear os dados do banco para o formato esperado pelo tipo Pet
+        const formattedPets: Pet[] = (data || []).map(pet => ({
+          id: pet.id,
+          nome: pet.nome,
+          especie: pet.especie as "cachorro" | "gato" | "ave" | "roedor" | "réptil" | "outro",
+          raca: pet.raca,
+          idade: pet.idade,
+          peso: pet.peso,
+          observacoes: pet.observacoes || undefined,
+          clientId: pet.client_id
+        }));
+        
+        setPets(formattedPets);
       } catch (error) {
         console.error("Erro ao carregar pets:", error);
         toast({
@@ -95,8 +106,13 @@ const MeusPets = () => {
       setSubmitting(true);
       
       const newPet = {
-        ...currentPet,
-        client_id: user.id
+        nome: currentPet.nome,
+        especie: currentPet.especie,
+        raca: currentPet.raca,
+        idade: currentPet.idade,
+        peso: currentPet.peso,
+        observacoes: currentPet.observacoes,
+        client_id: user.id  // Usar client_id para o Supabase
       };
       
       const { data, error } = await supabase
@@ -109,7 +125,19 @@ const MeusPets = () => {
         throw error;
       }
       
-      setPets([...pets, data]);
+      // Converter para o formato Pet
+      const formattedPet: Pet = {
+        id: data.id,
+        nome: data.nome,
+        especie: data.especie,
+        raca: data.raca,
+        idade: data.idade,
+        peso: data.peso,
+        observacoes: data.observacoes || undefined,
+        clientId: data.client_id
+      };
+      
+      setPets([...pets, formattedPet]);
       setIsAddDialogOpen(false);
       toast({
         description: "Pet adicionado com sucesso!",
@@ -141,16 +169,18 @@ const MeusPets = () => {
     try {
       setSubmitting(true);
       
+      const updateData = {
+        nome: currentPet.nome,
+        especie: currentPet.especie,
+        raca: currentPet.raca,
+        idade: currentPet.idade,
+        peso: currentPet.peso,
+        observacoes: currentPet.observacoes
+      };
+      
       const { data, error } = await supabase
         .from("pets")
-        .update({
-          nome: currentPet.nome,
-          especie: currentPet.especie,
-          raca: currentPet.raca,
-          idade: currentPet.idade,
-          peso: currentPet.peso,
-          observacoes: currentPet.observacoes
-        })
+        .update(updateData)
         .eq("id", currentPet.id)
         .select()
         .single();
@@ -159,7 +189,19 @@ const MeusPets = () => {
         throw error;
       }
       
-      setPets(pets.map(pet => pet.id === currentPet.id ? data : pet));
+      // Converter para o formato Pet
+      const formattedPet: Pet = {
+        id: data.id,
+        nome: data.nome,
+        especie: data.especie,
+        raca: data.raca,
+        idade: data.idade,
+        peso: data.peso,
+        observacoes: data.observacoes || undefined,
+        clientId: data.client_id
+      };
+      
+      setPets(pets.map(pet => pet.id === currentPet.id ? formattedPet : pet));
       setIsEditDialogOpen(false);
       toast({
         description: "Pet atualizado com sucesso!",
@@ -215,7 +257,7 @@ const MeusPets = () => {
       idade: pet.idade,
       peso: pet.peso,
       observacoes: pet.observacoes || "",
-      client_id: pet.clientId || pet.client_id
+      clientId: pet.clientId
     });
     setIsEditDialogOpen(true);
   };
@@ -229,7 +271,7 @@ const MeusPets = () => {
       idade: pet.idade,
       peso: pet.peso,
       observacoes: pet.observacoes || "",
-      client_id: pet.clientId || pet.client_id
+      clientId: pet.clientId
     });
     setIsDeleteDialogOpen(true);
   };

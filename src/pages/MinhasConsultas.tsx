@@ -28,6 +28,14 @@ interface ConsultaProps {
   observacoes?: string;
 }
 
+// Helper para garantir que o status esteja no formato correto
+const validateConsultaStatus = (status: string): 'agendado' | 'confirmado' | 'concluido' | 'cancelado' => {
+  if (status === 'agendado' || status === 'confirmado' || status === 'concluido' || status === 'cancelado') {
+    return status;
+  }
+  return 'agendado'; // Valor padrão se o status for inválido
+};
+
 const MinhasConsultas = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -110,12 +118,18 @@ const MinhasConsultas = () => {
           if (petsError) throw petsError;
           
           // Mesclar dados
-          const consultasCompletas = consultasData.map(consulta => {
+          const consultasCompletas: ConsultaProps[] = consultasData.map(consulta => {
             const vet = vetsData?.find(v => v.id === consulta.vet_id);
             const pet = petsData?.find(p => p.id === consulta.pet_id);
             
             return {
-              ...consulta,
+              id: consulta.id,
+              data: consulta.data,
+              horario: consulta.horario,
+              status: validateConsultaStatus(consulta.status),
+              observacoes: consulta.observacoes || undefined,
+              vet_id: consulta.vet_id,
+              pet_id: consulta.pet_id,
               vet_nome: vet?.nome || 'Veterinário não encontrado',
               pet_nome: pet?.nome || 'Pet não encontrado'
             };

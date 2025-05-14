@@ -1,13 +1,11 @@
 
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, FileText } from "lucide-react";
 import { petsMock, agendamentosMock, veterinariosMock } from "@/data/mockData";
+import ProntuarioSearchBar from "@/components/prontuarios/ProntuarioSearchBar";
+import ProntuarioCard from "@/components/prontuarios/ProntuarioCard";
 
 interface Prontuario {
   id: string;
@@ -90,50 +88,22 @@ const Prontuarios = () => {
           </p>
         </div>
         
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input
-            placeholder="Buscar prontuários por pet, veterinário ou diagnóstico..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <ProntuarioSearchBar 
+          searchTerm={searchTerm} 
+          setSearchTerm={setSearchTerm} 
+        />
         
         {filteredProntuarios.length > 0 ? (
           <div className="space-y-4">
             {filteredProntuarios.map((prontuario) => (
-              <Card key={prontuario.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <span>{getPetNome(prontuario.petId)}</span>
-                        <Badge variant="outline" className="ml-2">
-                          {formatarData(prontuario.data)}
-                        </Badge>
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        Dr. {getVeterinarioNome(prontuario.vetId)}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-sm">
-                    <div className="font-semibold mb-1">Diagnóstico</div>
-                    <p className="text-muted-foreground">{prontuario.diagnostico}</p>
-                  </div>
-                  
-                  <Button 
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={() => handleVerProntuario(prontuario.id)}
-                  >
-                    <FileText className="h-4 w-4" />
-                    Ver Prontuário Completo
-                  </Button>
-                </CardContent>
-              </Card>
+              <ProntuarioCard
+                key={prontuario.id}
+                prontuario={prontuario}
+                getPetNome={getPetNome}
+                getVeterinarioNome={getVeterinarioNome}
+                formatarData={formatarData}
+                handleVerProntuario={handleVerProntuario}
+              />
             ))}
           </div>
         ) : (

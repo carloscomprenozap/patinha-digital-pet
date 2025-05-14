@@ -26,7 +26,7 @@ interface SignupData {
   email: string;
   senha: string;
   telefone: string;
-  tipo: "client" | "vet";
+  tipo: "client" | "vet" | "admin";
   crmv?: string;
 }
 

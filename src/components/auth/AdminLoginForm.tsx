@@ -1,7 +1,6 @@
 
-// Mantemos o LoginForm existente, mas adicionamos um link para login como Admin
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +12,7 @@ interface LoginFormData {
   senha: string;
 }
 
-const LoginForm = () => {
+const AdminLoginForm = () => {
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     senha: ""
@@ -52,7 +51,7 @@ const LoginForm = () => {
     });
     
     if (success) {
-      // O redirecionamento é feito pelo contexto de autenticação
+      navigate("/dashboard-admin");
     }
   };
 
@@ -65,7 +64,7 @@ const LoginForm = () => {
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder="admin@exemplo.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               aria-invalid={!!formErrors.email}
@@ -100,18 +99,12 @@ const LoginForm = () => {
             className="w-full"
             disabled={loading}
           >
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Entrando..." : "Entrar como Administrador"}
           </Button>
-          
-          <div className="text-center mt-4">
-            <Link to="/login-admin" className="text-primary hover:underline text-sm">
-              Acessar como administrador
-            </Link>
-          </div>
         </form>
       </CardContent>
     </Card>
   );
 };
 
-export default LoginForm;
+export default AdminLoginForm;

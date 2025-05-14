@@ -1,4 +1,6 @@
 
+// Atualizando a página de login para incluir link para login administrativo
+
 import { Link } from "react-router-dom";
 import LoginForm from "@/components/auth/LoginForm";
 import MainLayout from "@/components/layouts/MainLayout";
@@ -67,6 +69,9 @@ const Login = () => {
               </p>
               <p className="text-sm mt-1">
                 É um veterinário? <Link to="/cadastro-veterinario" className="text-primary hover:underline font-medium">Cadastre-se como profissional</Link>
+              </p>
+              <p className="text-sm mt-2">
+                <Link to="/login-admin" className="text-primary/80 hover:underline">Acesso administrativo</Link>
               </p>
             </div>
           </div>

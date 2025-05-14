@@ -15,7 +15,6 @@ import {
 import MainLayout from "@/components/layouts/MainLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import CadastroTabs from "@/components/auth/CadastroTabs";
 
 interface FormData {
   nome: string;
@@ -23,15 +22,17 @@ interface FormData {
   telefone: string;
   senha: string;
   confirmarSenha: string;
+  codigoAdmin: string;
 }
 
-const Cadastro = () => {
+const CadastroAdmin = () => {
   const [formData, setFormData] = useState<FormData>({
     nome: "",
     email: "",
     telefone: "",
     senha: "",
-    confirmarSenha: ""
+    confirmarSenha: "",
+    codigoAdmin: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signup, loading } = useAuth();
@@ -68,6 +69,13 @@ const Cadastro = () => {
       newErrors.confirmarSenha = "As senhas não coincidem";
     }
     
+    if (!formData.codigoAdmin) {
+      newErrors.codigoAdmin = "O código de acesso administrativo é obrigatório";
+    } else if (formData.codigoAdmin !== "ADMIN123") {
+      // Código de acesso fixo para fins de exemplo
+      newErrors.codigoAdmin = "Código de acesso administrativo inválido";
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -84,11 +92,11 @@ const Cadastro = () => {
       email: formData.email,
       telefone: formData.telefone,
       senha: formData.senha,
-      tipo: 'client'
+      tipo: 'admin'
     });
     
     if (success) {
-      navigate("/login");
+      navigate("/login-admin");
     }
   };
 
@@ -116,11 +124,10 @@ const Cadastro = () => {
             <div className="flex justify-center mb-4">
               <Logo />
             </div>
-            <CardTitle className="text-2xl">Cadastro de Tutor</CardTitle>
+            <CardTitle className="text-2xl">Cadastro de Administrador</CardTitle>
             <CardDescription>
-              Crie sua conta para agendar consultas para seus pets
+              Crie sua conta de administrador para gerenciar o sistema
             </CardDescription>
-            <CadastroTabs />
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -197,27 +204,36 @@ const Cadastro = () => {
                 )}
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="codigoAdmin">Código de Acesso</Label>
+                <Input
+                  id="codigoAdmin"
+                  type="password"
+                  placeholder="Digite o código de acesso administrativo"
+                  value={formData.codigoAdmin}
+                  onChange={(e) => setFormData({ ...formData, codigoAdmin: e.target.value })}
+                  aria-invalid={!!errors.codigoAdmin}
+                />
+                {errors.codigoAdmin && (
+                  <p className="text-sm text-destructive">{errors.codigoAdmin}</p>
+                )}
+              </div>
+              
               <Button 
                 type="submit" 
                 className="w-full" 
                 disabled={loading}
               >
-                {loading ? "Cadastrando..." : "Cadastrar"}
+                {loading ? "Cadastrando..." : "Cadastrar Administrador"}
               </Button>
             </form>
           </CardContent>
           <CardFooter>
             <div className="text-center w-full text-sm">
               <p>
-                Já tem uma conta?{" "}
-                <Link to="/login" className="text-primary hover:underline">
+                Já tem uma conta de administrador?{" "}
+                <Link to="/login-admin" className="text-primary hover:underline">
                   Faça login
-                </Link>
-              </p>
-              <p className="mt-2">
-                É um veterinário?{" "}
-                <Link to="/cadastro-veterinario" className="text-primary hover:underline">
-                  Cadastre-se como profissional
                 </Link>
               </p>
             </div>
@@ -228,4 +244,4 @@ const Cadastro = () => {
   );
 };
 
-export default Cadastro;
+export default CadastroAdmin;

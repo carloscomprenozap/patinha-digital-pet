@@ -1,4 +1,6 @@
 
+// Adicionando as novas rotas de administração ao App.tsx
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,10 +10,13 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import LoginAdmin from "./pages/LoginAdmin";
 import Cadastro from "./pages/Cadastro";
 import CadastroVeterinario from "./pages/CadastroVeterinario";
+import CadastroAdmin from "./pages/CadastroAdmin";
 import Dashboard from "./pages/Dashboard";
 import DashboardVet from "./pages/DashboardVet";
+import DashboardAdmin from "./pages/DashboardAdmin";
 import AgendarConsulta from "./pages/AgendarConsulta";
 import NotFound from "./pages/NotFound";
 import Agenda from "./pages/Agenda";
@@ -70,6 +75,25 @@ const VeterinarioRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Componente de rota protegida para administradores
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, profile, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login-admin" />;
+  }
+  
+  if (profile?.tipo !== 'admin') {
+    return <Navigate to="/" />;
+  }
+  
+  return <>{children}</>;
+};
+
 // Componente para rota protegida para usuários autenticados (qualquer tipo)
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -96,6 +120,8 @@ const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   if (isAuthenticated) {
     if (profile?.tipo === 'vet') {
       return <Navigate to="/dashboard-vet" />;
+    } else if (profile?.tipo === 'admin') {
+      return <Navigate to="/dashboard-admin" />;
     }
     return <Navigate to="/dashboard" />;
   }
@@ -118,6 +144,14 @@ const AppRoutes = () => (
       } 
     />
     <Route 
+      path="/login-admin" 
+      element={
+        <GuestRoute>
+          <LoginAdmin />
+        </GuestRoute>
+      } 
+    />
+    <Route 
       path="/cadastro" 
       element={
         <GuestRoute>
@@ -130,6 +164,14 @@ const AppRoutes = () => (
       element={
         <GuestRoute>
           <CadastroVeterinario />
+        </GuestRoute>
+      } 
+    />
+    <Route 
+      path="/cadastro-admin" 
+      element={
+        <GuestRoute>
+          <CadastroAdmin />
         </GuestRoute>
       } 
     />
@@ -263,6 +305,80 @@ const AppRoutes = () => (
         <VeterinarioRoute>
           <Modulos />
         </VeterinarioRoute>
+      } 
+    />
+    
+    {/* Rotas de Administrador */}
+    <Route 
+      path="/dashboard-admin" 
+      element={
+        <AdminRoute>
+          <DashboardAdmin />
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/usuarios" 
+      element={
+        <AdminRoute>
+          <div>Página de Gerenciamento de Usuários</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/consultas" 
+      element={
+        <AdminRoute>
+          <div>Página de Gerenciamento de Consultas</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/veterinarios" 
+      element={
+        <AdminRoute>
+          <div>Página de Gerenciamento de Veterinários</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/relatorios" 
+      element={
+        <AdminRoute>
+          <div>Página de Relatórios</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/mensagens" 
+      element={
+        <AdminRoute>
+          <div>Página de Mensagens do Admin</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/notificacoes" 
+      element={
+        <AdminRoute>
+          <div>Página de Notificações</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/configuracoes" 
+      element={
+        <AdminRoute>
+          <div>Página de Configurações do Sistema</div>
+        </AdminRoute>
+      } 
+    />
+    <Route 
+      path="/admin/perfil" 
+      element={
+        <AdminRoute>
+          <div>Perfil do Administrador</div>
+        </AdminRoute>
       } 
     />
     

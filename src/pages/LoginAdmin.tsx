@@ -7,22 +7,22 @@ import AdminLoginForm from "@/components/auth/AdminLoginForm";
 const LoginAdmin = () => {
   return (
     <MainLayout>
-      <div className="container max-w-4xl mx-auto px-4 py-8 md:py-16">
-        <div className="text-center mb-8">
+      <div className="container max-w-4xl mx-auto px-4 py-6 md:py-10">
+        <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Acesso Administrativo</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Acesso Administrativo</h1>
+          <p className="text-muted-foreground px-4">
             Entre com suas credenciais de administrador para continuar
           </p>
         </div>
         
-        <div className="grid md:grid-cols-5 gap-8">
-          <div className="md:col-span-2 bg-muted p-6 rounded-lg">
-            <h2 className="text-xl font-semibold mb-4">Área Restrita</h2>
+        <div className="grid md:grid-cols-5 gap-6">
+          <div className="md:col-span-2 bg-muted p-5 rounded-lg shadow-sm order-2 md:order-1">
+            <h2 className="text-lg font-semibold mb-3">Área Restrita</h2>
             
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground mb-5 text-sm">
               Este acesso é exclusivo para administradores do sistema. Apenas contas registradas com 
               permissões administrativas podem acessar o painel de controle.
             </p>
@@ -36,8 +36,8 @@ const LoginAdmin = () => {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium">Gerenciamento completo</p>
-                  <p className="text-sm text-muted-foreground">Acesse todas as funcionalidades administrativas do sistema.</p>
+                  <p className="font-medium text-sm">Gerenciamento completo</p>
+                  <p className="text-xs text-muted-foreground">Acesse todas as funcionalidades administrativas.</p>
                 </div>
               </div>
               
@@ -48,20 +48,20 @@ const LoginAdmin = () => {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium">Acesso restrito</p>
-                  <p className="text-sm text-muted-foreground">Apenas administradores autorizados podem acessar este painel.</p>
+                  <p className="font-medium text-sm">Acesso restrito</p>
+                  <p className="text-xs text-muted-foreground">Apenas administradores autorizados podem acessar este painel.</p>
                 </div>
               </div>
             </div>
             
-            <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded">
-              <p className="text-sm">
+            <div className="mt-5 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <p className="text-xs">
                 Não tem acesso administrativo?{" "}
                 <Link to="/login" className="text-primary hover:underline font-medium">
                   Voltar ao acesso comum
                 </Link>
               </p>
-              <p className="text-sm mt-1">
+              <p className="text-xs mt-1">
                 Precisa de acesso administrativo?{" "}
                 <Link to="/cadastro-admin" className="text-primary hover:underline font-medium">
                   Solicite acesso
@@ -70,7 +70,7 @@ const LoginAdmin = () => {
             </div>
           </div>
           
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 order-1 md:order-2">
             <AdminLoginForm />
           </div>
         </div>

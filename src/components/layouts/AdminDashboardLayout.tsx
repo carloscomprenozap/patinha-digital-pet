@@ -14,13 +14,15 @@ import {
   BarChart,
   Bell,
   Menu,
-  Shield
+  Shield,
+  X
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetClose
 } from "@/components/ui/sheet";
 
 interface AdminDashboardLayoutProps {
@@ -59,18 +61,18 @@ const AdminDashboardLayout = ({ children }: AdminDashboardLayoutProps) => {
         <Link
           key={item.path}
           to={item.path}
-          className="flex items-center space-x-3 text-foreground/80 hover:text-primary hover:bg-primary/10 px-4 py-2 rounded-md transition-colors"
+          className="flex items-center space-x-3 text-foreground/80 hover:text-primary hover:bg-primary/10 px-4 py-3 rounded-lg transition-colors"
           onClick={() => setIsMobileMenuOpen(false)}
         >
-          <item.icon size={18} />
+          <item.icon size={20} />
           <span>{item.label}</span>
         </Link>
       ))}
       <button
         onClick={handleLogout}
-        className="flex items-center space-x-3 text-foreground/80 hover:text-destructive hover:bg-destructive/10 px-4 py-2 rounded-md transition-colors mt-auto"
+        className="flex items-center space-x-3 text-foreground/80 hover:text-destructive hover:bg-destructive/10 px-4 py-3 rounded-lg transition-colors mt-auto w-full text-left"
       >
-        <LogOut size={18} />
+        <LogOut size={20} />
         <span>Sair</span>
       </button>
     </>
@@ -87,7 +89,7 @@ const AdminDashboardLayout = ({ children }: AdminDashboardLayoutProps) => {
           </div>
         </div>
         
-        <div className="flex flex-col space-y-1 flex-1">
+        <div className="flex flex-col space-y-1 flex-1 overflow-auto">
           <NavItems />
         </div>
       </aside>
@@ -95,7 +97,7 @@ const AdminDashboardLayout = ({ children }: AdminDashboardLayoutProps) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card shadow-sm">
           <div className="flex items-center">
             <Logo size="sm" />
             <span className="ml-2 font-semibold text-sm text-primary">Admin</span>
@@ -103,17 +105,24 @@ const AdminDashboardLayout = ({ children }: AdminDashboardLayoutProps) => {
           
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu size={20} />
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu size={24} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[240px]">
-              <div className="flex flex-col h-full py-6">
-                <div className="mb-8 flex items-center">
-                  <Logo />
-                  <span className="ml-2 font-semibold text-primary">Admin</span>
+            <SheetContent side="left" className="w-[280px] p-0">
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <div className="flex items-center">
+                    <Logo size="sm" />
+                    <span className="ml-2 font-semibold text-primary">Admin</span>
+                  </div>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                      <X size={18} />
+                    </Button>
+                  </SheetClose>
                 </div>
-                <div className="flex flex-col space-y-1 flex-1">
+                <div className="flex-1 overflow-auto p-4 space-y-2">
                   <NavItems />
                 </div>
               </div>
@@ -122,7 +131,7 @@ const AdminDashboardLayout = ({ children }: AdminDashboardLayoutProps) => {
         </header>
         
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>

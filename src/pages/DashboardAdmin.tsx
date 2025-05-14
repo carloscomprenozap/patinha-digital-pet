@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import DashboardLayout from "@/components/layouts/DashboardLayout";
+import AdminDashboardLayout from "@/components/layouts/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -64,32 +64,34 @@ const DashboardAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+    <AdminDashboardLayout>
+      <div className="p-3 md:p-6">
+        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Painel Administrativo</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie todos os aspectos do sistema a partir deste painel de controle.
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Painel Administrativo</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Gerencie todos os aspectos do sistema a partir deste painel.
             </p>
           </div>
-          <div className="mt-4 md:mt-0 flex space-x-2">
-            <Input 
-              placeholder="Buscar..." 
-              className="w-60"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              icon={<Search className="h-4 w-4" />}
-            />
-            <Button>Exportar Dados</Button>
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input 
+                placeholder="Buscar..." 
+                className="pl-9 h-10 md:w-60"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button className="h-10">Exportar Dados</Button>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Usuários Totais</p>
+                <p className="text-sm font-medium text-muted-foreground">Usuários</p>
                 <h3 className="text-2xl font-bold">1,247</h3>
                 <p className="text-xs text-green-600">+12.5% este mês</p>
               </div>
@@ -115,7 +117,7 @@ const DashboardAdmin = () => {
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Consultas Agendadas</p>
+                <p className="text-sm font-medium text-muted-foreground">Consultas</p>
                 <h3 className="text-2xl font-bold">348</h3>
                 <p className="text-xs text-green-600">+24.3% este mês</p>
               </div>
@@ -128,7 +130,7 @@ const DashboardAdmin = () => {
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Clínicas Cadastradas</p>
+                <p className="text-sm font-medium text-muted-foreground">Clínicas</p>
                 <h3 className="text-2xl font-bold">32</h3>
                 <p className="text-xs text-green-600">+3.1% este mês</p>
               </div>
@@ -139,7 +141,7 @@ const DashboardAdmin = () => {
           </Card>
         </div>
         
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full mb-8">
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full mb-6">
           <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
@@ -147,99 +149,105 @@ const DashboardAdmin = () => {
           </TabsList>
           
           <TabsContent value="overview" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2">
                   <CardTitle className="flex items-center text-lg">
                     <Activity className="h-5 w-5 mr-2" />
                     Crescimento de Usuários
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={userStats}
-                      margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="mes" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="clientes" fill="#8884d8" name="Clientes" />
-                      <Bar dataKey="veterinarios" fill="#82ca9d" name="Veterinários" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <CardContent className="p-0 md:p-2">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={userStats}
+                        margin={{
+                          top: 5,
+                          right: 20,
+                          left: 0,
+                          bottom: 5,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="mes" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="clientes" fill="#8884d8" name="Clientes" />
+                        <Bar dataKey="veterinarios" fill="#82ca9d" name="Veterinários" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2">
                   <CardTitle className="flex items-center text-lg">
                     <PieChartIcon className="h-5 w-5 mr-2" />
                     Distribuição de Pets
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <CardContent className="p-0 md:p-2">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
               
-              <Card className="lg:col-span-2">
-                <CardHeader>
+              <Card className="lg:col-span-2 overflow-hidden">
+                <CardHeader className="pb-2">
                   <CardTitle className="flex items-center text-lg">
                     <Calendar className="h-5 w-5 mr-2" />
                     Consultas por Mês
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={consultasData}
-                      margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="mes" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="consultas"
-                        stroke="#8884d8"
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <CardContent className="p-0 md:p-2">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={consultasData}
+                        margin={{
+                          top: 5,
+                          right: 20,
+                          left: 0,
+                          bottom: 5,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="mes" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="consultas"
+                          stroke="#8884d8"
+                          activeDot={{ r: 8 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -268,7 +276,7 @@ const DashboardAdmin = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </AdminDashboardLayout>
   );
 };
 

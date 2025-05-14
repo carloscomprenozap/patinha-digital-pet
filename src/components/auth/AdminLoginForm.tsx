@@ -56,8 +56,8 @@ const AdminLoginForm = () => {
   };
 
   return (
-    <Card>
-      <CardContent className="pt-6">
+    <Card className="shadow-lg border-0">
+      <CardContent className="pt-6 p-4 md:p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
@@ -68,6 +68,7 @@ const AdminLoginForm = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               aria-invalid={!!formErrors.email}
+              className="h-11 rounded-lg"
             />
             {formErrors.email && (
               <p className="text-sm text-destructive">{formErrors.email}</p>
@@ -88,6 +89,7 @@ const AdminLoginForm = () => {
               value={formData.senha}
               onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
               aria-invalid={!!formErrors.senha}
+              className="h-11 rounded-lg"
             />
             {formErrors.senha && (
               <p className="text-sm text-destructive">{formErrors.senha}</p>
@@ -96,7 +98,7 @@ const AdminLoginForm = () => {
           
           <Button 
             type="submit" 
-            className="w-full"
+            className="w-full h-12 text-base rounded-lg shadow-md"
             disabled={loading}
           >
             {loading ? "Entrando..." : "Entrar como Administrador"}

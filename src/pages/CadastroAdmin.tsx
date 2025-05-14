@@ -22,7 +22,6 @@ interface FormData {
   telefone: string;
   senha: string;
   confirmarSenha: string;
-  codigoAdmin: string;
 }
 
 const CadastroAdmin = () => {
@@ -31,8 +30,7 @@ const CadastroAdmin = () => {
     email: "",
     telefone: "",
     senha: "",
-    confirmarSenha: "",
-    codigoAdmin: ""
+    confirmarSenha: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signup, loading } = useAuth();
@@ -67,13 +65,6 @@ const CadastroAdmin = () => {
       newErrors.confirmarSenha = "Confirme sua senha";
     } else if (formData.confirmarSenha !== formData.senha) {
       newErrors.confirmarSenha = "As senhas não coincidem";
-    }
-    
-    if (!formData.codigoAdmin) {
-      newErrors.codigoAdmin = "O código de acesso administrativo é obrigatório";
-    } else if (formData.codigoAdmin !== "ADMIN123") {
-      // Código de acesso fixo para fins de exemplo
-      newErrors.codigoAdmin = "Código de acesso administrativo inválido";
     }
     
     setErrors(newErrors);
@@ -118,18 +109,19 @@ const CadastroAdmin = () => {
 
   return (
     <MainLayout>
-      <div className="container max-w-md mx-auto px-4 py-8 md:py-16">
-        <Card className="w-full">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
+      <div className="container max-w-md mx-auto p-4">
+        <Card className="shadow-lg border-0">
+          <CardHeader className="text-center p-4 md:p-6 bg-primary/5 rounded-t-lg">
+            <div className="flex justify-center mb-2">
               <Logo />
             </div>
-            <CardTitle className="text-2xl">Cadastro de Administrador</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">Cadastro Admin</CardTitle>
             <CardDescription>
-              Crie sua conta de administrador para gerenciar o sistema
+              Crie sua conta de administrador
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="p-4 md:p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome Completo</Label>
@@ -139,6 +131,7 @@ const CadastroAdmin = () => {
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   aria-invalid={!!errors.nome}
+                  className="h-11 rounded-lg"
                 />
                 {errors.nome && (
                   <p className="text-sm text-destructive">{errors.nome}</p>
@@ -154,6 +147,7 @@ const CadastroAdmin = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   aria-invalid={!!errors.email}
+                  className="h-11 rounded-lg"
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email}</p>
@@ -168,6 +162,7 @@ const CadastroAdmin = () => {
                   value={formData.telefone}
                   onChange={handlePhoneChange}
                   aria-invalid={!!errors.telefone}
+                  className="h-11 rounded-lg"
                 />
                 {errors.telefone && (
                   <p className="text-sm text-destructive">{errors.telefone}</p>
@@ -183,6 +178,7 @@ const CadastroAdmin = () => {
                   value={formData.senha}
                   onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
                   aria-invalid={!!errors.senha}
+                  className="h-11 rounded-lg"
                 />
                 {errors.senha && (
                   <p className="text-sm text-destructive">{errors.senha}</p>
@@ -198,41 +194,28 @@ const CadastroAdmin = () => {
                   value={formData.confirmarSenha}
                   onChange={(e) => setFormData({ ...formData, confirmarSenha: e.target.value })}
                   aria-invalid={!!errors.confirmarSenha}
+                  className="h-11 rounded-lg"
                 />
                 {errors.confirmarSenha && (
                   <p className="text-sm text-destructive">{errors.confirmarSenha}</p>
                 )}
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="codigoAdmin">Código de Acesso</Label>
-                <Input
-                  id="codigoAdmin"
-                  type="password"
-                  placeholder="Digite o código de acesso administrativo"
-                  value={formData.codigoAdmin}
-                  onChange={(e) => setFormData({ ...formData, codigoAdmin: e.target.value })}
-                  aria-invalid={!!errors.codigoAdmin}
-                />
-                {errors.codigoAdmin && (
-                  <p className="text-sm text-destructive">{errors.codigoAdmin}</p>
-                )}
-              </div>
-              
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full h-12 text-base rounded-lg shadow-md"
                 disabled={loading}
               >
                 {loading ? "Cadastrando..." : "Cadastrar Administrador"}
               </Button>
             </form>
           </CardContent>
-          <CardFooter>
+          
+          <CardFooter className="bg-primary/5 rounded-b-lg p-4 md:p-6">
             <div className="text-center w-full text-sm">
               <p>
                 Já tem uma conta de administrador?{" "}
-                <Link to="/login-admin" className="text-primary hover:underline">
+                <Link to="/login-admin" className="text-primary font-medium hover:underline">
                   Faça login
                 </Link>
               </p>

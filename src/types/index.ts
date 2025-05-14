@@ -1,4 +1,3 @@
-
 export type UserType = 'client' | 'vet';
 
 export interface Address {
@@ -107,4 +106,13 @@ export interface ConsultaProps {
   pet_id: string;
   vet_nome: string;
   pet_nome: string;
+}
+
+export interface UserProfile {
+  id: string;
+  nome: string;
+  telefone?: string;
+  tipo: 'client' | 'vet' | 'admin';
+  created_at?: string;
+  updated_at?: string;
 }

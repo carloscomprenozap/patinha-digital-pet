@@ -1,4 +1,4 @@
-export type UserType = 'client' | 'vet';
+export type UserType = 'client' | 'vet' | 'admin';
 
 export interface Address {
   cep: string;

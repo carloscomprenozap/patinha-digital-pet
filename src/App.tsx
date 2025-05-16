@@ -1,4 +1,3 @@
-
 // Adicionando as novas rotas de administração ao App.tsx
 
 import { Toaster } from "@/components/ui/toaster";
@@ -34,6 +33,14 @@ import MinhasConsultas from "./pages/MinhasConsultas";
 import Prontuarios from "./pages/Prontuarios";
 import VetConnect from "./pages/VetConnect";
 import Modulos from "./pages/Modulos";
+
+// Import Admin pages
+import Usuarios from "./pages/admin/Usuarios";
+import Consultas from "./pages/admin/Consultas";
+import Veterinarios from "./pages/admin/Veterinarios";
+import Relatorios from "./pages/admin/Relatorios";
+import Notificacoes from "./pages/admin/Notificacoes";
+import Configuracoes from "./pages/admin/Configuracoes";
 
 const queryClient = new QueryClient();
 
@@ -321,7 +328,7 @@ const AppRoutes = () => (
       path="/admin/usuarios" 
       element={
         <AdminRoute>
-          <div>Página de Gerenciamento de Usuários</div>
+          <Usuarios />
         </AdminRoute>
       } 
     />
@@ -329,7 +336,7 @@ const AppRoutes = () => (
       path="/admin/consultas" 
       element={
         <AdminRoute>
-          <div>Página de Gerenciamento de Consultas</div>
+          <Consultas />
         </AdminRoute>
       } 
     />
@@ -337,7 +344,7 @@ const AppRoutes = () => (
       path="/admin/veterinarios" 
       element={
         <AdminRoute>
-          <div>Página de Gerenciamento de Veterinários</div>
+          <Veterinarios />
         </AdminRoute>
       } 
     />
@@ -345,7 +352,7 @@ const AppRoutes = () => (
       path="/admin/relatorios" 
       element={
         <AdminRoute>
-          <div>Página de Relatórios</div>
+          <Relatorios />
         </AdminRoute>
       } 
     />
@@ -353,7 +360,7 @@ const AppRoutes = () => (
       path="/admin/mensagens" 
       element={
         <AdminRoute>
-          <div>Página de Mensagens do Admin</div>
+          <Mensagens />
         </AdminRoute>
       } 
     />
@@ -361,7 +368,7 @@ const AppRoutes = () => (
       path="/admin/notificacoes" 
       element={
         <AdminRoute>
-          <div>Página de Notificações</div>
+          <Notificacoes />
         </AdminRoute>
       } 
     />
@@ -369,7 +376,7 @@ const AppRoutes = () => (
       path="/admin/configuracoes" 
       element={
         <AdminRoute>
-          <div>Página de Configurações do Sistema</div>
+          <Configuracoes />
         </AdminRoute>
       } 
     />
@@ -377,7 +384,7 @@ const AppRoutes = () => (
       path="/admin/perfil" 
       element={
         <AdminRoute>
-          <div>Perfil do Administrador</div>
+          <Perfil />
         </AdminRoute>
       } 
     />

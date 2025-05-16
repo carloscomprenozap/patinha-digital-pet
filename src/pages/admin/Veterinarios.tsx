@@ -1,83 +1,138 @@
+
 import { useState, useEffect } from "react";
 import AdminDashboardLayout from "@/components/layouts/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Stethoscope, Calendar, Mail, Phone, MapPin, Check, X } from "lucide-react";
+import { Veterinarian } from "@/types";
+import { 
+  Search, 
+  Stethoscope, 
+  MapPin, 
+  MoreVertical, 
+  PencilLine, 
+  Trash2, 
+  Eye,
+  Calendar,
+  UserPlus
+} from "lucide-react";
+import { format } from "date-fns";
 
-interface VeterinarioData {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  crmv: string;
-  preco_consulta: number;
+interface VeterinarioExtended extends Veterinarian {
   created_at: string;
   endereco?: {
     cidade: string;
     estado: string;
-  };
+  }
 }
 
 const Veterinarios = () => {
   const { toast } = useToast();
+  const [veterinarios, setVeterinarios] = useState<VeterinarioExtended[]>([]);
+  const [filteredVets, setFilteredVets] = useState<VeterinarioExtended[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [veterinarios, setVeterinarios] = useState<VeterinarioData[]>([]);
-  const [showDetails, setShowDetails] = useState(false);
-  const [selectedVeterinario, setSelectedVeterinario] = useState<VeterinarioData | null>(null);
-  
+
   useEffect(() => {
     carregarVeterinarios();
   }, []);
-  
+
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = veterinarios.filter(vet => 
+        vet.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vet.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vet.crmv.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vet.endereco?.cidade.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredVets(filtered);
+    } else {
+      setFilteredVets(veterinarios);
+    }
+  }, [searchTerm, veterinarios]);
+
   const carregarVeterinarios = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Buscar veterinários com dados do perfil
+      const { data: veterinariosData, error } = await supabase
         .from('veterinarios')
         .select(`
           *,
-          profiles:id(nome, telefone)
+          profiles:id(id, nome, telefone, tipo)
         `);
       
       if (error) throw error;
       
-      const vetsFormatados = data?.map(vet => {
+      // Buscar endereços dos veterinários
+      const vetIds = veterinariosData?.map(vet => vet.id) || [];
+      
+      if (vetIds.length === 0) {
+        setVeterinarios([]);
+        setFilteredVets([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      const { data: enderecosData, error: enderecosError } = await supabase
+        .from('enderecos')
+        .select('user_id, cidade, estado')
+        .in('user_id', vetIds);
+        
+      if (enderecosError) throw enderecosError;
+      
+      // Mapear para o formato desejado
+      const enderecosMap = new Map();
+      enderecosData?.forEach(endereco => {
+        enderecosMap.set(endereco.user_id, endereco);
+      });
+      
+      const vetsFormatted = veterinariosData?.map(vet => {
+        const profileData = vet.profiles as any;
+        const endereco = enderecosMap.get(vet.id);
+        
         return {
           id: vet.id,
-          nome: vet.profiles?.nome || "Nome não disponível",
-          email: "",
-          telefone: vet.profiles?.telefone || "Telefone não disponível",
+          nome: profileData?.nome || 'Sem nome',
+          email: '',
+          telefone: profileData?.telefone || '',
+          tipo: 'vet' as const,
+          especialidades: [],
           crmv: vet.crmv,
-          preco_consulta: vet.preco_consulta,
-          created_at: vet.created_at,
-          // outros campos conforme necessário
+          disponibilidade: [],
+          precoConsulta: vet.preco_consulta,
+          endereco: endereco ? {
+            cep: '',
+            estado: endereco.estado,
+            cidade: endereco.cidade,
+            bairro: '',
+            logradouro: '',
+            numero: ''
+          } : undefined,
+          created_at: vet.created_at
         };
       }) || [];
       
-      setVeterinarios(vetsFormatados);
+      setVeterinarios(vetsFormatted);
+      setFilteredVets(vetsFormatted);
     } catch (error) {
       console.error("Erro ao carregar veterinários:", error);
       toast({
@@ -89,59 +144,52 @@ const Veterinarios = () => {
       setIsLoading(false);
     }
   };
-  
-  const filteredVeterinarios = veterinarios
-    .filter(vet => 
-      vet.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vet.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vet.crmv.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  
+
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy");
+    } catch {
+      return "-";
+    }
   };
-  
-  const showVeterinarioDetails = (veterinario: VeterinarioData) => {
-    setSelectedVeterinario(veterinario);
-    setShowDetails(true);
-  };
-  
+
   return (
     <AdminDashboardLayout>
       <div className="p-6">
         <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Veterinários</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Gerenciamento de Veterinários</h1>
             <p className="text-muted-foreground mt-1">
-              Gerenciamento de veterinários cadastrados na plataforma
+              Visualize e gerencie todos os veterinários cadastrados na plataforma
             </p>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input 
-                placeholder="Buscar por nome, email ou CRMV..." 
+              <Input
+                placeholder="Buscar veterinário..."
                 className="pl-9 h-10 md:w-64"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button className="h-10">
-              <Stethoscope className="h-4 w-4 mr-2" />
+              <UserPlus className="h-4 w-4 mr-2" />
               Novo Veterinário
             </Button>
           </div>
         </div>
-        
+
         <Card>
           <CardHeader className="py-4">
-            <CardTitle>Lista de Veterinários</CardTitle>
-            <CardDescription>
-              {filteredVeterinarios.length} veterinários encontrados
-            </CardDescription>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+              <div>
+                <CardTitle>Lista de Veterinários</CardTitle>
+                <CardDescription>
+                  {filteredVets.length} {filteredVets.length === 1 ? "veterinário encontrado" : "veterinários encontrados"}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -149,158 +197,92 @@ const Veterinarios = () => {
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : (
-              <Table>
-                <TableCaption>Lista de veterinários cadastrados na plataforma</TableCaption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CRMV</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Preço Consulta</TableHead>
-                    <TableHead>Data de Cadastro</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredVeterinarios.length > 0 ? (
-                    filteredVeterinarios.map((veterinario) => (
-                      <TableRow key={veterinario.id}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Stethoscope className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{veterinario.nome}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{veterinario.crmv}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                            {veterinario.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                            {veterinario.telefone}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">
-                            R$ {veterinario.preco_consulta.toFixed(2)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                            {formatDate(veterinario.created_at)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => showVeterinarioDetails(veterinario)}
-                          >
-                            Detalhes
-                          </Button>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Veterinário</TableHead>
+                      <TableHead>CRMV</TableHead>
+                      <TableHead>Localidade</TableHead>
+                      <TableHead>Consulta</TableHead>
+                      <TableHead>Cadastro</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredVets.length > 0 ? (
+                      filteredVets.map((vet) => (
+                        <TableRow key={vet.id}>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Stethoscope className="mr-2 h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <div className="font-medium">{vet.nome}</div>
+                                <div className="text-sm text-muted-foreground">{vet.telefone || 'Sem telefone'}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{vet.crmv}</TableCell>
+                          <TableCell>
+                            {vet.endereco ? (
+                              <div className="flex items-center">
+                                <MapPin className="mr-1 h-4 w-4 text-muted-foreground" />
+                                <span>{vet.endereco.cidade}, {vet.endereco.estado}</span>
+                              </div>
+                            ) : (
+                              "Não informado"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              R$ {vet.precoConsulta.toFixed(2)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(vet.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menu</span>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Perfil
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <PencilLine className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Calendar className="mr-2 h-4 w-4" />
+                                  Horários
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          Nenhum veterinário encontrado.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6">
-                        <p className="text-muted-foreground">
-                          Nenhum veterinário encontrado com os filtros aplicados
-                        </p>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
-        
-        {selectedVeterinario && (
-          <Dialog open={showDetails} onOpenChange={setShowDetails}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Detalhes do Veterinário</DialogTitle>
-                <DialogDescription>
-                  Informações completas sobre o veterinário
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Nome</Label>
-                  <p className="font-medium">{selectedVeterinario.nome}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">CRMV</Label>
-                  <p className="font-medium">{selectedVeterinario.crmv}</p>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">E-mail</Label>
-                  <div className="flex items-center">
-                    <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <p>{selectedVeterinario.email}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Telefone</Label>
-                  <div className="flex items-center">
-                    <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <p>{selectedVeterinario.telefone}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Localização</Label>
-                  <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <p>
-                      {selectedVeterinario.endereco 
-                        ? `${selectedVeterinario.endereco.cidade} - ${selectedVeterinario.endereco.estado}`
-                        : "Endereço não cadastrado"}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Preço da Consulta</Label>
-                  <p className="font-medium text-primary">
-                    R$ {selectedVeterinario.preco_consulta.toFixed(2)}
-                  </p>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Data de Cadastro</Label>
-                  <div className="flex items-center">
-                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <p>{formatDate(selectedVeterinario.created_at)}</p>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setShowDetails(false)}>
-                  Fechar
-                </Button>
-                <div className="flex space-x-2">
-                  <Button variant="outline">
-                    Editar
-                  </Button>
-                  <Button variant="destructive">
-                    Desativar
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
     </AdminDashboardLayout>
   );

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -106,22 +107,28 @@ const AgendarConsulta = () => {
     
     try {
       // Buscar veterinários do banco
-      let query = supabase
+      const { data: veterinariosData, error } = await supabase
         .from('veterinarios')
         .select(`
-          *,
-          profiles:id(nome, telefone, tipo),
-          enderecos:id(cep, estado, cidade, bairro, logradouro, numero, complemento)
+          id,
+          crmv,
+          preco_consulta
         `);
         
-      // Aplicar filtros
-      const { data: veterinariosData, error } = await query;
-      
       if (error) throw error;
-      
-      // Buscar endereços dos veterinários
+
+      // Buscar perfis dos veterinários
       const vetIds = veterinariosData.map(vet => vet.id);
       
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nome, telefone')
+        .in('id', vetIds)
+        .eq('tipo', 'vet');
+      
+      if (profilesError) throw profilesError;
+      
+      // Buscar endereços dos veterinários
       const { data: enderecosData, error: enderecosError } = await supabase
         .from('enderecos')
         .select('*')
@@ -129,15 +136,20 @@ const AgendarConsulta = () => {
         
       if (enderecosError) throw enderecosError;
       
+      // Criar mapas para fácil acesso
+      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+      const enderecosMap = new Map(enderecosData?.map(endereco => [endereco.user_id, endereco]) || []);
+      
       // Mapear dados para o formato correto
-      const veterinarios = veterinariosData.map(vet => {
-        const endereco = enderecosData?.find(e => e.user_id === vet.id);
+      const veterinarios: VeterinarioProfile[] = veterinariosData.map(vet => {
+        const profile = profilesMap.get(vet.id);
+        const endereco = enderecosMap.get(vet.id);
         
         return {
           id: vet.id,
-          nome: vet.profiles?.nome || 'Sem nome',
+          nome: profile?.nome || 'Sem nome',
           email: '',
-          telefone: vet.profiles?.telefone || '',
+          telefone: profile?.telefone || '',
           tipo: 'vet' as const,
           crmv: vet.crmv || '',
           preco_consulta: vet.preco_consulta || 0,

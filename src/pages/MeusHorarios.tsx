@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { DisponibilidadeDB } from "@/types";
 import { 
   Select, 
   SelectContent, 
@@ -14,52 +14,49 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Calendar, Clock, Edit, Plus, Trash } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { DisponibilidadeDB } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { PlusCircle, Calendar, Clock, Trash2, Edit, Loader2 } from "lucide-react";
+
+const diasSemana = [
+  { value: 0, label: "Domingo" },
+  { value: 1, label: "Segunda-feira" },
+  { value: 2, label: "Terça-feira" },
+  { value: 3, label: "Quarta-feira" },
+  { value: 4, label: "Quinta-feira" },
+  { value: 5, label: "Sexta-feira" },
+  { value: 6, label: "Sábado" }
+];
 
 const MeusHorarios = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   const [disponibilidades, setDisponibilidades] = useState<DisponibilidadeDB[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedDisponibilidade, setSelectedDisponibilidade] = useState<DisponibilidadeDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentDisponibilidade, setCurrentDisponibilidade] = useState<Partial<DisponibilidadeDB>>({
-    dia_semana: 1, // Segunda-feira por padrão
-    hora_inicio: "08:00",
-    hora_fim: "18:00"
+  const [filteredTab, setFilteredTab] = useState<string>("all");
+  
+  // Estado para nova disponibilidade
+  const [novaDisponibilidade, setNovaDisponibilidade] = useState({
+    diaSemana: "",
+    horaInicio: "08:00",
+    horaFim: "18:00"
   });
   
-  const diasSemana = [
-    { value: 0, label: "Domingo" },
-    { value: 1, label: "Segunda-feira" },
-    { value: 2, label: "Terça-feira" },
-    { value: 3, label: "Quarta-feira" },
-    { value: 4, label: "Quinta-feira" },
-    { value: 5, label: "Sexta-feira" },
-    { value: 6, label: "Sábado" },
-  ];
-  
-  // Carregar disponibilidades do veterinário
   useEffect(() => {
     if (user) {
       carregarDisponibilidades();
@@ -69,8 +66,7 @@ const MeusHorarios = () => {
   const carregarDisponibilidades = async () => {
     if (!user) return;
     
-    setIsLoading(true);
-    
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('disponibilidades')
@@ -85,367 +81,406 @@ const MeusHorarios = () => {
       console.error("Erro ao carregar disponibilidades:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar suas disponibilidades",
-        variant: "destructive",
+        description: "Não foi possível carregar seus horários de disponibilidade",
+        variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
   
-  const handleSalvar = async () => {
+  const getHorariosByDiaSemana = (dia: number) => {
+    return disponibilidades.filter(d => d.dia_semana === dia);
+  };
+  
+  const handleSalvarDisponibilidade = async () => {
     if (!user) return;
     
+    if (!novaDisponibilidade.diaSemana || !novaDisponibilidade.horaInicio || !novaDisponibilidade.horaFim) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos para continuar",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validar que hora de início é anterior à hora fim
+    if (novaDisponibilidade.horaInicio >= novaDisponibilidade.horaFim) {
+      toast({
+        title: "Horário inválido",
+        description: "A hora de início deve ser anterior à hora de término",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      setIsLoading(true);
-      
-      // Verificar se há sobreposição de horários
-      const sobreposicao = disponibilidades.some(item => 
-        !isEditing && // Ignorar verificação se estiver editando o mesmo item
-        item.dia_semana === Number(currentDisponibilidade.dia_semana) &&
-        ((currentDisponibilidade.hora_inicio >= item.hora_inicio && currentDisponibilidade.hora_inicio < item.hora_fim) ||
-        (currentDisponibilidade.hora_fim > item.hora_inicio && currentDisponibilidade.hora_fim <= item.hora_fim) ||
-        (currentDisponibilidade.hora_inicio <= item.hora_inicio && currentDisponibilidade.hora_fim >= item.hora_fim))
-      );
-      
-      if (sobreposicao) {
-        toast({
-          title: "Atenção",
-          description: "Existe sobreposição com horários já cadastrados para este dia",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (isEditing && currentDisponibilidade.id) {
-        // Atualizar disponibilidade existente
+      if (isEditing && selectedDisponibilidade) {
+        // Atualizando disponibilidade existente
         const { error } = await supabase
           .from('disponibilidades')
           .update({
-            dia_semana: Number(currentDisponibilidade.dia_semana),
-            hora_inicio: currentDisponibilidade.hora_inicio,
-            hora_fim: currentDisponibilidade.hora_fim
+            dia_semana: parseInt(novaDisponibilidade.diaSemana),
+            hora_inicio: novaDisponibilidade.horaInicio,
+            hora_fim: novaDisponibilidade.horaFim
           })
-          .eq('id', currentDisponibilidade.id);
+          .eq('id', selectedDisponibilidade.id);
           
         if (error) throw error;
         
         toast({
-          title: "Sucesso",
-          description: "Disponibilidade atualizada com sucesso",
+          title: "Horário atualizado",
+          description: "Sua disponibilidade foi atualizada com sucesso"
         });
       } else {
-        // Criar nova disponibilidade
+        // Criando nova disponibilidade
         const { error } = await supabase
           .from('disponibilidades')
           .insert({
             vet_id: user.id,
-            dia_semana: Number(currentDisponibilidade.dia_semana),
-            hora_inicio: currentDisponibilidade.hora_inicio,
-            hora_fim: currentDisponibilidade.hora_fim
+            dia_semana: parseInt(novaDisponibilidade.diaSemana),
+            hora_inicio: novaDisponibilidade.horaInicio,
+            hora_fim: novaDisponibilidade.horaFim
           });
           
         if (error) throw error;
         
         toast({
-          title: "Sucesso",
-          description: "Disponibilidade cadastrada com sucesso",
+          title: "Horário adicionado",
+          description: "Sua disponibilidade foi adicionada com sucesso"
         });
       }
       
-      // Recarregar disponibilidades
+      // Recarregar disponibilidades e fechar o diálogo
       await carregarDisponibilidades();
-      
-      // Resetar formulário
-      setCurrentDisponibilidade({
-        dia_semana: 1,
-        hora_inicio: "08:00",
-        hora_fim: "18:00"
-      });
-      setIsEditing(false);
-      
+      setIsDialogOpen(false);
+      resetForm();
     } catch (error) {
       console.error("Erro ao salvar disponibilidade:", error);
       toast({
         title: "Erro",
         description: "Não foi possível salvar a disponibilidade",
-        variant: "destructive",
+        variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
   
-  const handleEditar = (disponibilidade: DisponibilidadeDB) => {
-    setCurrentDisponibilidade(disponibilidade);
-    setIsEditing(true);
-  };
-  
-  const handleExcluir = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta disponibilidade?")) {
-      return;
-    }
+  const handleExcluirDisponibilidade = async () => {
+    if (!selectedDisponibilidade) return;
     
     try {
-      setIsLoading(true);
-      
       const { error } = await supabase
         .from('disponibilidades')
         .delete()
-        .eq('id', id);
+        .eq('id', selectedDisponibilidade.id);
         
       if (error) throw error;
       
       toast({
-        title: "Sucesso",
-        description: "Disponibilidade excluída com sucesso",
+        title: "Horário excluído",
+        description: "Sua disponibilidade foi excluída com sucesso"
       });
       
-      // Recarregar disponibilidades
+      // Recarregar disponibilidades e fechar o diálogo
       await carregarDisponibilidades();
+      setIsDeleteDialogOpen(false);
+      setSelectedDisponibilidade(null);
     } catch (error) {
       console.error("Erro ao excluir disponibilidade:", error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir a disponibilidade",
-        variant: "destructive",
+        variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
   
-  const getNomeDiaSemana = (diaSemana: number) => {
-    return diasSemana.find(dia => dia.value === diaSemana)?.label || "Desconhecido";
+  const editarDisponibilidade = (disponibilidade: DisponibilidadeDB) => {
+    setIsEditing(true);
+    setSelectedDisponibilidade(disponibilidade);
+    setNovaDisponibilidade({
+      diaSemana: disponibilidade.dia_semana.toString(),
+      horaInicio: disponibilidade.hora_inicio,
+      horaFim: disponibilidade.hora_fim
+    });
+    setIsDialogOpen(true);
   };
   
+  const confirmarExclusao = (disponibilidade: DisponibilidadeDB) => {
+    setSelectedDisponibilidade(disponibilidade);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const resetForm = () => {
+    setIsEditing(false);
+    setSelectedDisponibilidade(null);
+    setNovaDisponibilidade({
+      diaSemana: "",
+      horaInicio: "08:00",
+      horaFim: "18:00"
+    });
+  };
+  
+  const getNomeDiaSemana = (dia: number) => {
+    const diaObj = diasSemana.find(d => d.value === dia);
+    return diaObj ? diaObj.label : "Desconhecido";
+  };
+  
+  const getDisplayHorarios = () => {
+    if (filteredTab === "all") return disponibilidades;
+    
+    const diaFilter = parseInt(filteredTab);
+    return disponibilidades.filter(d => d.dia_semana === diaFilter);
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+      <div className="container mx-auto py-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Meus Horários</h1>
-            <p className="text-muted-foreground">
-              Gerencie seus horários de disponibilidade para consultas
+            <h1 className="text-3xl font-bold tracking-tight">Meus Horários</h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie sua disponibilidade para atendimento
             </p>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="flex items-center">
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Horário
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{isEditing ? "Editar Horário" : "Novo Horário"}</DialogTitle>
-                <DialogDescription>
-                  {isEditing ? "Altere os detalhes do horário de disponibilidade" : "Cadastre um novo horário de disponibilidade"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dia">Dia da Semana</Label>
-                  <Select
-                    value={String(currentDisponibilidade.dia_semana)}
-                    onValueChange={(value) => setCurrentDisponibilidade({
-                      ...currentDisponibilidade,
-                      dia_semana: Number(value)
-                    })}
-                  >
-                    <SelectTrigger id="dia">
-                      <SelectValue placeholder="Selecione o dia" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {diasSemana.map((dia) => (
-                        <SelectItem key={dia.value} value={String(dia.value)}>{dia.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hora-inicio">Hora Início</Label>
-                    <Input
-                      id="hora-inicio"
-                      type="time"
-                      value={currentDisponibilidade.hora_inicio}
-                      onChange={(e) => setCurrentDisponibilidade({
-                        ...currentDisponibilidade,
-                        hora_inicio: e.target.value
-                      })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hora-fim">Hora Fim</Label>
-                    <Input
-                      id="hora-fim"
-                      type="time"
-                      value={currentDisponibilidade.hora_fim}
-                      onChange={(e) => setCurrentDisponibilidade({
-                        ...currentDisponibilidade,
-                        hora_fim: e.target.value
-                      })}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline" type="button">
-                    Cancelar
-                  </Button>
-                </DialogClose>
-                <Button onClick={handleSalvar} disabled={isLoading}>
-                  {isLoading ? "Salvando..." : "Salvar"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <div className="mt-4 md:mt-0">
+            <Button onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Adicionar Horário
+            </Button>
+          </div>
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Horários Cadastrados</CardTitle>
-            <CardDescription>
-              Seus horários de atendimento para cada dia da semana
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center p-8">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : disponibilidades.length > 0 ? (
-              <Table>
-                <TableCaption>Lista de horários disponíveis para atendimento</TableCaption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Dia da Semana</TableHead>
-                    <TableHead>Horário de Início</TableHead>
-                    <TableHead>Horário de Término</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {disponibilidades.map((disponibilidade) => (
-                    <TableRow key={disponibilidade.id}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                          {getNomeDiaSemana(disponibilidade.dia_semana)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                          {disponibilidade.hora_inicio}
-                        </div>
-                      </TableCell>
-                      <TableCell>{disponibilidade.hora_fim}</TableCell>
-                      <TableCell className="text-right">
-                        <Dialog>
-                          <DialogTrigger asChild>
+        <Tabs value={filteredTab} onValueChange={setFilteredTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            {diasSemana.map((dia) => (
+              <TabsTrigger 
+                key={dia.value} 
+                value={dia.value.toString()}
+                className="hidden md:flex" // Ocultar em dispositivos móveis para não sobrecarregar
+              >
+                {dia.label.substring(0, 3)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          <TabsContent value={filteredTab} className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {filteredTab === "all" 
+                    ? "Todos os Horários Disponíveis" 
+                    : `Horários de ${getNomeDiaSemana(parseInt(filteredTab))}`}
+                </CardTitle>
+                <CardDescription>
+                  {filteredTab === "all"
+                    ? "Visualize e gerencie todos os seus horários de disponibilidade"
+                    : `Visualize e gerencie seus horários disponíveis para ${getNomeDiaSemana(parseInt(filteredTab))}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : getDisplayHorarios().length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Dia da Semana</TableHead>
+                        <TableHead>Hora de Início</TableHead>
+                        <TableHead>Hora de Término</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getDisplayHorarios().map((horario) => (
+                        <TableRow key={horario.id}>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                              {getNomeDiaSemana(horario.dia_semana)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                              {horario.hora_inicio}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                              {horario.hora_fim}
+                            </div>
+                          </TableCell>
+                          <TableCell className="flex justify-end space-x-2">
                             <Button 
                               variant="outline" 
-                              size="icon" 
-                              className="mr-2"
-                              onClick={() => handleEditar(disponibilidade)}
+                              size="sm"
+                              onClick={() => editarDisponibilidade(horario)}
                             >
                               <Edit className="h-4 w-4" />
+                              <span className="sr-only">Editar</span>
                             </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Editar Horário</DialogTitle>
-                              <DialogDescription>
-                                Altere os detalhes do horário de disponibilidade
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="dia-edit">Dia da Semana</Label>
-                                <Select
-                                  value={String(currentDisponibilidade.dia_semana)}
-                                  onValueChange={(value) => setCurrentDisponibilidade({
-                                    ...currentDisponibilidade,
-                                    dia_semana: Number(value)
-                                  })}
-                                >
-                                  <SelectTrigger id="dia-edit">
-                                    <SelectValue placeholder="Selecione o dia" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {diasSemana.map((dia) => (
-                                      <SelectItem key={dia.value} value={String(dia.value)}>{dia.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="hora-inicio-edit">Hora Início</Label>
-                                  <Input
-                                    id="hora-inicio-edit"
-                                    type="time"
-                                    value={currentDisponibilidade.hora_inicio}
-                                    onChange={(e) => setCurrentDisponibilidade({
-                                      ...currentDisponibilidade,
-                                      hora_inicio: e.target.value
-                                    })}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="hora-fim-edit">Hora Fim</Label>
-                                  <Input
-                                    id="hora-fim-edit"
-                                    type="time"
-                                    value={currentDisponibilidade.hora_fim}
-                                    onChange={(e) => setCurrentDisponibilidade({
-                                      ...currentDisponibilidade,
-                                      hora_fim: e.target.value
-                                    })}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <DialogClose asChild>
-                                <Button variant="outline" type="button">
-                                  Cancelar
-                                </Button>
-                              </DialogClose>
-                              <Button onClick={handleSalvar} disabled={isLoading}>
-                                {isLoading ? "Salvando..." : "Salvar"}
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleExcluir(disponibilidade.id)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-muted-foreground mb-4">
-                  Nenhum horário cadastrado
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Clique no botão "Novo Horário" para cadastrar sua disponibilidade
-                </p>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => confirmarExclusao(horario)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Excluir</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      {filteredTab === "all"
+                        ? "Você ainda não cadastrou horários de disponibilidade"
+                        : `Você não tem horários cadastrados para ${getNomeDiaSemana(parseInt(filteredTab))}`}
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        resetForm();
+                        if (filteredTab !== "all") {
+                          setNovaDisponibilidade({
+                            ...novaDisponibilidade,
+                            diaSemana: filteredTab
+                          });
+                        }
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      {filteredTab === "all"
+                        ? "Adicionar Horário"
+                        : `Adicionar Horário para ${getNomeDiaSemana(parseInt(filteredTab))}`}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+        
+        {/* Dialog para adicionar/editar horário */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {isEditing ? "Editar Horário" : "Adicionar Novo Horário"}
+              </DialogTitle>
+              <DialogDescription>
+                {isEditing 
+                  ? "Modifique os detalhes do horário de disponibilidade"
+                  : "Cadastre um novo horário de disponibilidade para atendimento"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="diaSemana">Dia da Semana</Label>
+                <Select
+                  value={novaDisponibilidade.diaSemana}
+                  onValueChange={(value) => setNovaDisponibilidade({
+                    ...novaDisponibilidade,
+                    diaSemana: value
+                  })}
+                  disabled={isEditing}
+                >
+                  <SelectTrigger id="diaSemana">
+                    <SelectValue placeholder="Selecione um dia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {diasSemana.map((dia) => (
+                      <SelectItem key={dia.value} value={dia.value.toString()}>
+                        {dia.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="horaInicio">Hora de Início</Label>
+                  <Input 
+                    id="horaInicio"
+                    type="time"
+                    value={novaDisponibilidade.horaInicio}
+                    onChange={(e) => setNovaDisponibilidade({
+                      ...novaDisponibilidade,
+                      horaInicio: e.target.value
+                    })}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="horaFim">Hora de Término</Label>
+                  <Input 
+                    id="horaFim"
+                    type="time"
+                    value={novaDisponibilidade.horaFim}
+                    onChange={(e) => setNovaDisponibilidade({
+                      ...novaDisponibilidade,
+                      horaFim: e.target.value
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                resetForm();
+              }}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSalvarDisponibilidade}>
+                {isEditing ? "Atualizar" : "Adicionar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Dialog para confirmação de exclusão */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Confirmar Exclusão</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir este horário de disponibilidade? 
+                Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {selectedDisponibilidade && (
+                <div className="bg-accent p-4 rounded-md">
+                  <p><strong>Dia:</strong> {getNomeDiaSemana(selectedDisponibilidade.dia_semana)}</p>
+                  <p><strong>Horário:</strong> {selectedDisponibilidade.hora_inicio} até {selectedDisponibilidade.hora_fim}</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleExcluirDisponibilidade}>
+                Excluir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

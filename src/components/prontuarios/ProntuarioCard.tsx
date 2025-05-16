@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Stethoscope, Calendar, FileText } from "lucide-react";
+import { Link } from 'react-router-dom';
 
 interface ProntuarioProps {
   prontuario: {
@@ -11,11 +12,12 @@ interface ProntuarioProps {
     vetId: string;
     diagnostico: string;
     data?: string;
+    consultaId: string; // Added consultaId
   };
   getPetNome: (petId: string) => string;
   getVeterinarioNome: (vetId: string) => string;
   formatarData: (data: string) => string;
-  handleVerProntuario: (id: string) => void;
+  handleVerProntuario: (id: string, petId: string, consultaId: string) => void; // Updated function signature
 }
 
 const ProntuarioCard = ({
@@ -61,7 +63,7 @@ const ProntuarioCard = ({
           variant="outline" 
           size="sm"
           className="flex items-center"
-          onClick={() => handleVerProntuario(prontuario.id)}
+          onClick={() => handleVerProntuario(prontuario.id, prontuario.petId, prontuario.consultaId)}
         >
           <FileText className="h-4 w-4 mr-1" />
           Ver prontuário

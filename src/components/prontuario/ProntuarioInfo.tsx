@@ -1,97 +1,145 @@
 
-import React from "react";
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Calendar, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, User, Stethoscope, Scale, Dog, Cat } from "lucide-react";
 
-interface ProntuarioInfoProps {
-  petInfo: any;
-  consultaInfo: any;
-  formatarData: (dataString: string) => string;
+interface PetInfo {
+  id: string;
+  nome: string;
+  especie: string;
+  raca: string;
+  idade: number;
+  peso: number;
+  observacoes?: string;
 }
 
-const ProntuarioInfo = ({ petInfo, consultaInfo, formatarData }: ProntuarioInfoProps) => {
+interface ConsultaInfo {
+  id: string;
+  data: string;
+  horario: string;
+  status: string;
+  observacoes?: string;
+  profiles: {
+    nome: string;
+    telefone?: string;
+  }
+}
+
+interface ProntuarioInfoProps {
+  petInfo: PetInfo;
+  consultaInfo: ConsultaInfo;
+  formatarData: (data: string) => string;
+}
+
+const ProntuarioInfo: React.FC<ProntuarioInfoProps> = ({
+  petInfo,
+  consultaInfo,
+  formatarData
+}) => {
+  const getPetIcon = () => {
+    switch (petInfo.especie.toLowerCase()) {
+      case 'cachorro':
+        return <Dog className="h-4 w-4 mr-2" />;
+      case 'gato':
+        return <Cat className="h-4 w-4 mr-2" />;
+      default:
+        return <Dog className="h-4 w-4 mr-2" />;
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div className="grid md:grid-cols-2 gap-6">
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center text-lg">
-            <User className="mr-2 h-4 w-4" />
-            Informações do Paciente
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            {getPetIcon()}
+            <span>Informações do Pet</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <dl className="space-y-2">
-            <div>
-              <dt className="text-sm text-muted-foreground">Nome</dt>
-              <dd className="font-medium">{petInfo.nome}</dd>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between">
+            <span className="font-medium">Nome:</span>
+            <span>{petInfo.nome}</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Espécie:</span>
+            <span>{petInfo.especie}</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Raça:</span>
+            <span>{petInfo.raca}</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Idade:</span>
+            <span>{petInfo.idade} {petInfo.idade === 1 ? 'ano' : 'anos'}</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Peso:</span>
+            <div className="flex items-center">
+              <Scale className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{petInfo.peso} kg</span>
             </div>
+          </div>
+          
+          {petInfo.observacoes && (
             <div>
-              <dt className="text-sm text-muted-foreground">Espécie</dt>
-              <dd>{petInfo.especie}</dd>
+              <span className="font-medium">Observações:</span>
+              <p className="text-sm text-muted-foreground mt-1">{petInfo.observacoes}</p>
             </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Raça</dt>
-              <dd>{petInfo.raca}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Idade</dt>
-              <dd>{petInfo.idade} anos</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Peso</dt>
-              <dd>{petInfo.peso} kg</dd>
-            </div>
-          </dl>
+          )}
         </CardContent>
       </Card>
       
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center text-lg">
-            <Calendar className="mr-2 h-4 w-4" />
-            Informações da Consulta
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            <Calendar className="h-4 w-4 mr-2" />
+            <span>Informações da Consulta</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <dl className="space-y-2">
-            <div>
-              <dt className="text-sm text-muted-foreground">Data</dt>
-              <dd className="font-medium">{formatarData(consultaInfo.data)}</dd>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between">
+            <span className="font-medium">Data:</span>
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{formatarData(consultaInfo.data)}</span>
             </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Horário</dt>
-              <dd>{consultaInfo.horario}</dd>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Horário:</span>
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{consultaInfo.horario}</span>
             </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Status</dt>
-              <dd>
-                <span 
-                  className={`inline-block px-2 py-1 text-xs rounded-full
-                  ${consultaInfo.status === 'agendado' ? 'bg-vetblue-100 text-vetblue-600' :
-                    consultaInfo.status === 'confirmado' ? 'bg-vetcare-100 text-vetcare-600' :
-                    consultaInfo.status === 'concluido' ? 'bg-green-100 text-green-600' :
-                    'bg-red-100 text-red-600'
-                  }`}
-                >
-                  {consultaInfo.status.charAt(0).toUpperCase() + consultaInfo.status.slice(1)}
-                </span>
-              </dd>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Status:</span>
+            <Badge variant={consultaInfo.status === 'concluido' ? "default" : "outline"}>
+              {consultaInfo.status === 'concluido' ? 'Concluído' : 'Pendente'}
+            </Badge>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Veterinário:</span>
+            <div className="flex items-center">
+              <Stethoscope className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{consultaInfo.profiles?.nome || 'Não informado'}</span>
             </div>
-          </dl>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center text-lg">
-            <Clock className="mr-2 h-4 w-4" />
-            Histórico
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {petInfo.observacoes || 'Sem observações anteriores.'}
-          </p>
+          </div>
+          
+          {consultaInfo.observacoes && (
+            <div>
+              <span className="font-medium">Observações:</span>
+              <p className="text-sm text-muted-foreground mt-1">{consultaInfo.observacoes}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

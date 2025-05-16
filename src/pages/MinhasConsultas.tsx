@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, AlertTriangle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { ConsultaProps, ConsultaDB } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,7 +78,6 @@ const ReagendarDialog = ({ consulta, onReagendarSuccess }: ReagendarDialogProps)
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
@@ -95,8 +94,7 @@ const ReagendarDialog = ({ consulta, onReagendarSuccess }: ReagendarDialogProps)
   const fetchAvailableDates = async () => {
     setIsLoading(true);
     try {
-      // In a real app, fetch available dates from Supabase
-      // For now, we'll generate some mock dates
+      // Fetch available dates
       const today = new Date();
       const dates = [];
       
@@ -122,10 +120,29 @@ const ReagendarDialog = ({ consulta, onReagendarSuccess }: ReagendarDialogProps)
   const fetchAvailableTimes = async () => {
     setIsLoading(true);
     try {
-      // In a real app, fetch available times from Supabase based on the selected date
-      // For now, we'll generate mock times
-      const times = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00"];
-      setAvailableTimes(times);
+      // Fetch times that are not already booked
+      const { data: bookedTimes, error } = await supabase
+        .from('consultas')
+        .select('horario')
+        .eq('vet_id', consulta.vet_id)
+        .eq('data', selectedDate)
+        .neq('id', consulta.id) // Exclude current appointment
+        .in('status', ['agendado', 'confirmado']);
+
+      if (error) throw error;
+      
+      // Generate all possible times
+      const allTimes = [];
+      for (let hour = 8; hour < 18; hour++) {
+        allTimes.push(`${hour.toString().padStart(2, '0')}:00`);
+        allTimes.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
+      
+      // Filter out booked times
+      const bookedSet = new Set(bookedTimes?.map(item => item.horario) || []);
+      const availableTimes = allTimes.filter(time => !bookedSet.has(time));
+      
+      setAvailableTimes(availableTimes);
     } catch (error) {
       console.error("Error fetching available times:", error);
       toast({
@@ -306,7 +323,6 @@ const ConsultaDetailDialog = ({ consulta }: ConsultaDetailDialogProps) => {
 const MinhasConsultas = () => {
   const [consultas, setConsultas] = useState<ConsultaProps[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { toast } = useToast();
   const { user } = useAuth();
   
   useEffect(() => {
@@ -320,16 +336,15 @@ const MinhasConsultas = () => {
     
     setIsLoading(true);
     try {
-      // Buscar consultas com nomes dos pets e veterinários
+      // Fetch appointments with pet and veterinarian information
+      console.log("Buscando consultas para o usuário:", user.id);
+      
       const { data, error } = await supabase
         .from('consultas')
         .select(`
-          *,
+          id, data, horario, status, observacoes, pet_id, vet_id, client_id,
           pets:pet_id (nome),
-          veterinarios:vet_id (
-            id,
-            profiles:id (nome)
-          )
+          profiles:vet_id (nome)
         `)
         .eq('client_id', user.id)
         .order('data', { ascending: false });
@@ -337,6 +352,8 @@ const MinhasConsultas = () => {
       if (error) {
         throw error;
       }
+
+      console.log("Consultas encontradas:", data);
 
       if (data) {
         const formattedConsultas = data.map((consulta: any) => ({
@@ -348,9 +365,10 @@ const MinhasConsultas = () => {
           vet_id: consulta.vet_id,
           pet_id: consulta.pet_id,
           pet_nome: consulta.pets?.nome || 'Pet não encontrado',
-          vet_nome: consulta.veterinarios?.profiles?.nome || 'Veterinário não encontrado'
+          vet_nome: consulta.profiles?.nome || 'Veterinário não encontrado'
         }));
         
+        console.log("Consultas formatadas:", formattedConsultas);
         setConsultas(formattedConsultas as ConsultaProps[]);
       }
     } catch (error) {
@@ -433,6 +451,16 @@ const MinhasConsultas = () => {
       </CardContent>
       <CardFooter className="pt-2 flex flex-col gap-2">
         <ConsultaDetailDialog consulta={consulta} />
+        
+        {consulta.status === 'concluido' && (
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => window.location.href = `/prontuario?petId=${consulta.pet_id}&consultaId=${consulta.id}`}
+          >
+            Ver Prontuário
+          </Button>
+        )}
         
         {consulta.status === 'agendado' && (
           <>

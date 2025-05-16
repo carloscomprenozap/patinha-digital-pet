@@ -4,11 +4,10 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, FileText } from "lucide-react";
 import ProntuarioInfo from "@/components/prontuario/ProntuarioInfo";
 import ProntuarioForm from "@/components/prontuario/ProntuarioForm";
-import { createProntuario, updateProntuario } from "@/services/api";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Prontuario {
@@ -26,7 +25,6 @@ const ProntuarioPage = () => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   const consultaId = searchParams.get('consultaId');
   const petId = searchParams.get('petId');
@@ -53,18 +51,28 @@ const ProntuarioPage = () => {
       setIsLoading(true);
       try {
         if (consultaId) {
+          console.log("Buscando informações da consulta:", consultaId);
           // Buscar consulta do banco de dados
           const { data: consulta, error: consultaError } = await supabase
             .from('consultas')
-            .select('*, profiles!consultas_vet_id_fkey(nome)')
+            .select(`
+              *,
+              profiles:vet_id (nome, telefone)
+            `)
             .eq('id', consultaId)
             .single();
           
-          if (consultaError) throw consultaError;
+          if (consultaError) {
+            console.error("Erro ao buscar consulta:", consultaError);
+            throw consultaError;
+          }
+          
+          console.log("Consulta encontrada:", consulta);
           setConsultaInfo(consulta);
         }
         
         if (petId) {
+          console.log("Buscando informações do pet:", petId);
           // Buscar pet do banco de dados
           const { data: pet, error: petError } = await supabase
             .from('pets')
@@ -72,19 +80,30 @@ const ProntuarioPage = () => {
             .eq('id', petId)
             .single();
           
-          if (petError) throw petError;
+          if (petError) {
+            console.error("Erro ao buscar pet:", petError);
+            throw petError;
+          }
+          
+          console.log("Pet encontrado:", pet);
           setPetInfo(pet);
         }
         
         // Verificar se já existe um prontuário para esta consulta
         if (consultaId) {
+          console.log("Verificando se existe prontuário para a consulta:", consultaId);
           const { data: existingPront, error: prontError } = await supabase
             .from('prontuarios')
             .select('*')
             .eq('consulta_id', consultaId)
             .maybeSingle();
           
-          if (prontError && prontError.code !== 'PGRST116') throw prontError;
+          if (prontError && prontError.code !== 'PGRST116') {
+            console.error("Erro ao verificar prontuário:", prontError);
+            throw prontError;
+          }
+          
+          console.log("Prontuário encontrado:", existingPront);
           
           if (existingPront) {
             setExistingProntuario(existingPront);
@@ -134,39 +153,62 @@ const ProntuarioPage = () => {
     
     setIsLoading(true);
     try {
+      console.log("Salvando prontuário...");
+      
       // Dados a serem salvos no banco
       const prontuarioData = {
-        ...prontuario,
-        vetId: user.id,
-        consultaId,
-        petId
+        anamnese: prontuario.anamnese,
+        diagnostico: prontuario.diagnostico,
+        prescricao: prontuario.prescricao,
+        observacoes: prontuario.observacoes,
+        vet_id: user.tipo === 'vet' ? user.id : prontuario.vetId,
+        consulta_id: consultaId,
+        pet_id: petId
       };
       
+      console.log("Dados do prontuário para salvar:", prontuarioData);
+      
       if (existingProntuario) {
+        console.log("Atualizando prontuário existente:", existingProntuario.id);
         // Atualizar prontuário existente
-        await updateProntuario(existingProntuario.id, prontuarioData);
+        const { error } = await supabase
+          .from('prontuarios')
+          .update({
+            anamnese: prontuario.anamnese,
+            diagnostico: prontuario.diagnostico,
+            prescricao: prontuario.prescricao,
+            observacoes: prontuario.observacoes
+          })
+          .eq('id', existingProntuario.id);
+        
+        if (error) throw error;
         
         // Também atualizar a consulta com diagnóstico e prescrição
         const { error: consultaError } = await supabase
           .from('consultas')
           .update({
-            diagnostico: prontuarioData.diagnostico,
-            prescricao: prontuarioData.prescricao,
+            diagnostico: prontuario.diagnostico,
+            prescricao: prontuario.prescricao,
             status: 'concluido'
           })
           .eq('id', consultaId);
         
         if (consultaError) throw consultaError;
       } else {
+        console.log("Criando novo prontuário");
         // Criar novo prontuário
-        await createProntuario(prontuarioData);
+        const { error } = await supabase
+          .from('prontuarios')
+          .insert(prontuarioData);
+        
+        if (error) throw error;
         
         // Também atualizar a consulta com diagnóstico e prescrição
         const { error: consultaError } = await supabase
           .from('consultas')
           .update({
-            diagnostico: prontuarioData.diagnostico,
-            prescricao: prontuarioData.prescricao,
+            diagnostico: prontuario.diagnostico,
+            prescricao: prontuario.prescricao,
             status: 'concluido'
           })
           .eq('id', consultaId);
@@ -227,6 +269,10 @@ const ProntuarioPage = () => {
     );
   }
 
+  // Determine if the user is a vet and can edit
+  const canEdit = user?.tipo === 'vet' || user?.tipo === 'admin';
+  const isReadOnly = !canEdit;
+
   return (
     <DashboardLayout>
       <div>
@@ -258,6 +304,7 @@ const ProntuarioPage = () => {
           handleInputChange={handleInputChange}
           handleSalvar={handleSalvar}
           isLoading={isLoading}
+          isReadOnly={isReadOnly}
         />
       </div>
     </DashboardLayout>

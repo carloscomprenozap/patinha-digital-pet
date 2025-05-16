@@ -1,79 +1,104 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
-interface ProntuarioFormProps {
-  prontuario: {
-    anamnese: string;
-    diagnostico: string;
-    prescricao: string;
-    observacoes: string;
-  };
-  handleInputChange: (field: string, value: string) => void;
-  handleSalvar: () => void;
-  isLoading?: boolean;
+interface Prontuario {
+  id: string;
+  consultaId: string;
+  petId: string;
+  vetId: string;
+  anamnese: string;
+  diagnostico: string;
+  prescricao: string;
+  observacoes: string;
 }
 
-const ProntuarioForm = ({ prontuario, handleInputChange, handleSalvar, isLoading = false }: ProntuarioFormProps) => {
+interface ProntuarioFormProps {
+  prontuario: Prontuario;
+  handleInputChange: (field: string, value: string) => void;
+  handleSalvar: () => void;
+  isLoading: boolean;
+  isReadOnly?: boolean;
+}
+
+const ProntuarioForm: React.FC<ProntuarioFormProps> = ({ 
+  prontuario, 
+  handleInputChange, 
+  handleSalvar, 
+  isLoading,
+  isReadOnly = false
+}) => {
   return (
-    <Card className="p-6 mt-6">
-      <div className="space-y-6">
-        <div>
-          <Label className="text-base font-semibold">Anamnese</Label>
-          <Textarea 
-            className="mt-2"
-            placeholder="Histórico médico e descrição dos sintomas"
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-lg">Informações do Prontuário</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="anamnese">Anamnese</Label>
+          <Textarea
+            id="anamnese"
+            rows={4}
+            placeholder="Histórico do paciente e queixa principal"
             value={prontuario.anamnese}
             onChange={(e) => handleInputChange('anamnese', e.target.value)}
-            rows={4}
+            readOnly={isReadOnly}
+            className={isReadOnly ? 'bg-muted cursor-not-allowed' : ''}
           />
         </div>
         
-        <div>
-          <Label className="text-base font-semibold">Diagnóstico</Label>
-          <Textarea 
-            className="mt-2"
-            placeholder="Diagnóstico do paciente"
+        <div className="space-y-2">
+          <Label htmlFor="diagnostico">Diagnóstico</Label>
+          <Textarea
+            id="diagnostico"
+            rows={3}
+            placeholder="Diagnóstico após avaliação"
             value={prontuario.diagnostico}
             onChange={(e) => handleInputChange('diagnostico', e.target.value)}
-            rows={3}
+            readOnly={isReadOnly}
+            className={isReadOnly ? 'bg-muted cursor-not-allowed' : ''}
           />
         </div>
         
-        <div>
-          <Label className="text-base font-semibold">Prescrição</Label>
-          <Textarea 
-            className="mt-2"
-            placeholder="Medicamentos prescritos"
+        <div className="space-y-2">
+          <Label htmlFor="prescricao">Prescrição</Label>
+          <Textarea
+            id="prescricao"
+            rows={4}
+            placeholder="Medicamentos, dosagens e recomendações"
             value={prontuario.prescricao}
             onChange={(e) => handleInputChange('prescricao', e.target.value)}
-            rows={3}
+            readOnly={isReadOnly}
+            className={isReadOnly ? 'bg-muted cursor-not-allowed' : ''}
           />
         </div>
         
-        <div>
-          <Label className="text-base font-semibold">Observações</Label>
-          <Textarea 
-            className="mt-2"
+        <div className="space-y-2">
+          <Label htmlFor="observacoes">Observações</Label>
+          <Textarea
+            id="observacoes"
+            rows={3}
             placeholder="Observações adicionais"
             value={prontuario.observacoes}
             onChange={(e) => handleInputChange('observacoes', e.target.value)}
-            rows={3}
+            readOnly={isReadOnly}
+            className={isReadOnly ? 'bg-muted cursor-not-allowed' : ''}
           />
         </div>
-        
-        <div className="flex justify-end">
+      </CardContent>
+      <CardFooter className="flex justify-end">
+        {!isReadOnly && (
           <Button 
             onClick={handleSalvar}
             disabled={isLoading}
           >
             {isLoading ? "Salvando..." : "Salvar Prontuário"}
           </Button>
-        </div>
-      </div>
+        )}
+      </CardFooter>
     </Card>
   );
 };

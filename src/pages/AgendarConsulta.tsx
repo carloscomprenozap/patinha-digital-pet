@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, MapPin, User, Clock, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,7 +36,6 @@ const estadosBrasileiros = [
 
 const AgendarConsulta = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [filtros, setFiltros] = useState({
     estado: "",
@@ -106,67 +105,79 @@ const AgendarConsulta = () => {
     setIsLoading(true);
     
     try {
-      // Buscar veterinários do banco
-      const { data: veterinariosData, error } = await supabase
-        .from('veterinarios')
-        .select(`
-          id,
-          crmv,
-          preco_consulta
-        `);
-        
-      if (error) throw error;
-
-      // Buscar perfis dos veterinários
-      const vetIds = veterinariosData.map(vet => vet.id);
+      console.log("Buscando veterinários com filtros:", filtros);
       
+      // Primeiro, busque os IDs dos veterinários na tabela veterinarios
+      const { data: veterinariosData, error: vetError } = await supabase
+        .from('veterinarios')
+        .select('id, crmv, preco_consulta');
+        
+      if (vetError) throw vetError;
+      console.log("Veterinários encontrados:", veterinariosData);
+      
+      if (!veterinariosData || veterinariosData.length === 0) {
+        console.log("Nenhum veterinário encontrado na tabela veterinarios");
+        setVeterinariosFiltrados([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Obter os IDs dos veterinários
+      const vetIds = veterinariosData.map(vet => vet.id);
+      console.log("IDs dos veterinários:", vetIds);
+      
+      // Buscar os perfis dos veterinários
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, nome, telefone')
-        .in('id', vetIds)
-        .eq('tipo', 'vet');
-      
+        .in('id', vetIds);
+        
       if (profilesError) throw profilesError;
+      console.log("Perfis encontrados:", profilesData);
       
-      // Buscar endereços dos veterinários
+      // Buscar os endereços dos veterinários
       const { data: enderecosData, error: enderecosError } = await supabase
         .from('enderecos')
         .select('*')
         .in('user_id', vetIds);
         
       if (enderecosError) throw enderecosError;
+      console.log("Endereços encontrados:", enderecosData);
       
-      // Criar mapas para fácil acesso
+      // Criar mapas para associar dados
+      const veterinariosMap = new Map(veterinariosData.map(vet => [vet.id, vet]));
       const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
       const enderecosMap = new Map(enderecosData?.map(endereco => [endereco.user_id, endereco]) || []);
       
-      // Mapear dados para o formato correto
-      const veterinarios: VeterinarioProfile[] = veterinariosData.map(vet => {
-        const profile = profilesMap.get(vet.id);
-        const endereco = enderecosMap.get(vet.id);
+      // Combinar os dados para formar veterinários completos
+      const veterinariosCompletos = vetIds.map(id => {
+        const vetData = veterinariosMap.get(id);
+        const profileData = profilesMap.get(id);
+        const enderecoData = enderecosMap.get(id);
         
         return {
-          id: vet.id,
-          nome: profile?.nome || 'Sem nome',
+          id,
+          nome: profileData?.nome || 'Nome não disponível',
           email: '',
-          telefone: profile?.telefone || '',
+          telefone: profileData?.telefone || '',
           tipo: 'vet' as const,
-          crmv: vet.crmv || '',
-          preco_consulta: vet.preco_consulta || 0,
-          endereco: endereco ? {
-            cep: endereco.cep,
-            estado: endereco.estado,
-            cidade: endereco.cidade,
-            bairro: endereco.bairro,
-            logradouro: endereco.logradouro,
-            numero: endereco.numero,
-            complemento: endereco.complemento
+          crmv: vetData?.crmv || '',
+          preco_consulta: vetData?.preco_consulta || 0,
+          endereco: enderecoData ? {
+            cep: enderecoData.cep || '',
+            estado: enderecoData.estado || '',
+            cidade: enderecoData.cidade || '',
+            bairro: enderecoData.bairro || '',
+            logradouro: enderecoData.logradouro || '',
+            numero: enderecoData.numero || ''
           } : undefined
         };
       });
       
-      // Aplicar filtros localmente
-      const resultado = veterinarios.filter((vet) => {
+      console.log("Veterinários completos antes do filtro:", veterinariosCompletos);
+      
+      // Aplicar filtros
+      const resultado = veterinariosCompletos.filter(vet => {
         if (!vet.endereco) return false;
         
         const matchEstado = !filtros.estado || filtros.estado === "todos" || 
@@ -179,6 +190,7 @@ const AgendarConsulta = () => {
         return matchEstado && matchCidade && matchBairro;
       });
       
+      console.log("Veterinários filtrados:", resultado);
       setVeterinariosFiltrados(resultado);
     } catch (error) {
       console.error("Erro ao buscar veterinários:", error);
@@ -217,20 +229,41 @@ const AgendarConsulta = () => {
       const datasDisponiveis: Date[] = [];
       const disponibilidades = data || [];
       
-      // Dias da semana disponíveis
-      const diasDisponiveisSet = new Set(disponibilidades.map(d => d.dia_semana));
+      console.log("Disponibilidades encontradas:", disponibilidades);
       
-      // Próximos 30 dias
-      for (let i = 0; i < 30; i++) {
-        const data = new Date();
-        data.setDate(hoje.getDate() + i);
+      // Se não houver disponibilidades cadastradas, gerar horários padrão para os próximos 14 dias
+      // Segunda a sexta das 8:00 às 18:00
+      if (disponibilidades.length === 0) {
+        // Dias úteis (1 = segunda, 5 = sexta)
+        const diasUteis = [1, 2, 3, 4, 5];
         
-        // Verificar se o dia da semana está disponível
-        if (diasDisponiveisSet.has(data.getDay())) {
-          datasDisponiveis.push(new Date(data));
+        // Próximos 14 dias
+        for (let i = 0; i < 14; i++) {
+          const data = new Date();
+          data.setDate(hoje.getDate() + i);
+          
+          // Verificar se é dia útil (1-5)
+          if (diasUteis.includes(data.getDay())) {
+            datasDisponiveis.push(new Date(data));
+          }
+        }
+      } else {
+        // Dias da semana disponíveis
+        const diasDisponiveisSet = new Set(disponibilidades.map(d => d.dia_semana));
+        
+        // Próximos 30 dias
+        for (let i = 0; i < 30; i++) {
+          const data = new Date();
+          data.setDate(hoje.getDate() + i);
+          
+          // Verificar se o dia da semana está disponível
+          if (diasDisponiveisSet.has(data.getDay())) {
+            datasDisponiveis.push(new Date(data));
+          }
         }
       }
       
+      console.log("Datas disponíveis:", datasDisponiveis);
       setDatasDisponiveis(datasDisponiveis);
       
       // Limpar seleção prévia
@@ -267,30 +300,38 @@ const AgendarConsulta = () => {
         
       if (error) throw error;
       
+      console.log("Disponibilidade para o dia selecionado:", disponibilidadeDia);
+      
+      let horarios: string[] = [];
+      
+      // Se não houver disponibilidades cadastradas para este dia, usar horário padrão
+      // 8:00 às 18:00 com intervalos de 30 minutos
       if (!disponibilidadeDia || disponibilidadeDia.length === 0) {
-        setHorariosDisponiveis([]);
-        return;
-      }
-      
-      // Gerar horários de 30 em 30 minutos dentro do intervalo disponível
-      const horarios: string[] = [];
-      
-      disponibilidadeDia.forEach(disponibilidade => {
-        const [horaInicio, minutoInicio] = disponibilidade.hora_inicio.split(':').map(Number);
-        const [horaFim, minutoFim] = disponibilidade.hora_fim.split(':').map(Number);
+        const horaInicio = 8;
+        const horaFim = 18;
         
-        // Converter para minutos desde o início do dia
-        const inicioMinutos = horaInicio * 60 + minutoInicio;
-        const fimMinutos = horaFim * 60 + minutoFim;
-        
-        // Gerar horários a cada 30 minutos
-        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += 30) {
-          const hora = Math.floor(minutos / 60);
-          const minuto = minutos % 60;
-          const horarioFormatado = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
-          horarios.push(horarioFormatado);
+        for (let hora = horaInicio; hora < horaFim; hora++) {
+          horarios.push(`${hora.toString().padStart(2, '0')}:00`);
+          horarios.push(`${hora.toString().padStart(2, '0')}:30`);
         }
-      });
+      } else {
+        disponibilidadeDia.forEach(disponibilidade => {
+          const [horaInicio, minutoInicio] = disponibilidade.hora_inicio.split(':').map(Number);
+          const [horaFim, minutoFim] = disponibilidade.hora_fim.split(':').map(Number);
+          
+          // Converter para minutos desde o início do dia
+          const inicioMinutos = horaInicio * 60 + minutoInicio;
+          const fimMinutos = horaFim * 60 + minutoFim;
+          
+          // Gerar horários a cada 30 minutos
+          for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += 30) {
+            const hora = Math.floor(minutos / 60);
+            const minuto = minutos % 60;
+            const horarioFormatado = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+            horarios.push(horarioFormatado);
+          }
+        });
+      }
       
       // Verificar se há consultas já agendadas para esta data
       const dataFormatada = format(data, 'yyyy-MM-dd');
@@ -304,10 +345,13 @@ const AgendarConsulta = () => {
         
       if (consultasError) throw consultasError;
       
+      console.log("Consultas agendadas para esta data:", consultasAgendadas);
+      
       // Filtrar horários já agendados
       const horariosAgendados = new Set(consultasAgendadas?.map(c => c.horario) || []);
       const horariosDisponiveis = horarios.filter(horario => !horariosAgendados.has(horario));
       
+      console.log("Horários disponíveis:", horariosDisponiveis);
       setHorariosDisponiveis(horariosDisponiveis);
       
     } catch (error) {
@@ -350,6 +394,16 @@ const AgendarConsulta = () => {
       // Formatar data para o banco
       const dataFormatada = format(dataSelecionada, 'yyyy-MM-dd');
       
+      console.log("Dados para agendamento:", {
+        client_id: user.id,
+        vet_id: veterinarioSelecionado.id,
+        pet_id: petSelecionado,
+        data: dataFormatada,
+        horario: horarioSelecionado,
+        status: 'agendado',
+        observacoes: observacoes
+      });
+      
       // Criar agendamento no banco
       const { data, error } = await supabase
         .from('consultas')
@@ -365,6 +419,8 @@ const AgendarConsulta = () => {
         .select();
         
       if (error) throw error;
+      
+      console.log("Agendamento criado com sucesso:", data);
       
       toast({
         title: "Consulta agendada com sucesso!",

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Pet, Agendamento, Prontuario, Veterinarian, Client } from "@/types";
 import { ConsultaDB } from "@/types";
@@ -78,8 +77,9 @@ export const fetchAgendamentos = async (userId: string, userType: string) => {
     .from('consultas')
     .select(`
       *,
-      profiles!consultas_vet_id_fkey(nome as vet_nome),
-      pets!consultas_pet_id_fkey(nome as pet_nome)
+      veterinarios:vet_id(id),
+      profiles:veterinarios(nome),
+      pets:pet_id(nome)
     `);
   
   // Filtrar consultas de acordo com o tipo de usuário
@@ -93,7 +93,10 @@ export const fetchAgendamentos = async (userId: string, userType: string) => {
   const { data, error } = await query;
   
   if (error) throw error;
-  return data as ConsultaDB[];
+  
+  // Use type assertion to convert the response to ConsultaDB[]
+  // This is necessary because the SQL query's shape doesn't match TypeScript's expectations
+  return data as unknown as ConsultaDB[];
 };
 
 export const createAgendamento = async (agendamentoData: Omit<Agendamento, 'id' | 'createdAt'>) => {
@@ -115,14 +118,24 @@ export const createAgendamento = async (agendamentoData: Omit<Agendamento, 'id' 
 };
 
 export const updateAgendamento = async (id: string, agendamentoData: Partial<Agendamento>) => {
+  // Ensure we only use fields that are present in the consultas table
+  const updateData: any = {
+    status: agendamentoData.status,
+    observacoes: agendamentoData.observacoes
+  };
+  
+  // Only add these fields if they exist in the agendamentoData
+  if ('diagnostico' in agendamentoData) {
+    updateData.diagnostico = agendamentoData.diagnostico;
+  }
+  
+  if ('prescricao' in agendamentoData) {
+    updateData.prescricao = agendamentoData.prescricao;
+  }
+  
   const { data, error } = await supabase
     .from('consultas')
-    .update({
-      status: agendamentoData.status,
-      observacoes: agendamentoData.observacoes,
-      diagnostico: agendamentoData.diagnostico,
-      prescricao: agendamentoData.prescricao
-    })
+    .update(updateData)
     .eq('id', id)
     .select();
   

@@ -9,6 +9,7 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface UserWithProfile extends User {
   profile?: Profile | null;
+  tipo?: string;  // Add tipo property directly to UserWithProfile
 }
 
 interface AuthContextType {
@@ -92,8 +93,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setProfile(data);
       
-      // Atualiza o objeto de usuário com o perfil
-      setUser(prev => prev ? { ...prev, profile: data } : null);
+      // Atualiza o objeto de usuário com o perfil e expõe o tipo diretamente
+      setUser(prev => prev ? { ...prev, profile: data, tipo: data.tipo } : null);
     } catch (error) {
       console.error("Erro ao buscar perfil:", error);
     }

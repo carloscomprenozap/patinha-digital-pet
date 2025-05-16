@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -8,16 +7,9 @@ import ProntuarioCard from "@/components/prontuarios/ProntuarioCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Prontuario } from "@/types";
 
-interface Prontuario {
-  id: string;
-  petId: string;
-  consultaId: string;
-  vetId: string;
-  data: string;
-  diagnostico: string;
-  prescricao: string;
-  observacoes: string;
+interface ProntuarioWithNames extends Prontuario {
   petNome?: string;
   vetNome?: string;
 }
@@ -25,9 +17,9 @@ interface Prontuario {
 const Prontuarios = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [prontuarios, setProntuarios] = useState<Prontuario[]>([]);
+  const [prontuarios, setProntuarios] = useState<ProntuarioWithNames[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   
   useEffect(() => {
@@ -47,12 +39,11 @@ const Prontuarios = () => {
           *,
           pets:pet_id(nome),
           consultas:consulta_id(data, diagnostico),
-          veterinarios:vet_id(id),
-          profiles:veterinarios!inner(nome)
+          profiles:vet_id(nome)
         `);
       
       // Filtrar por tipo de usuário
-      if (user.tipo === 'client') {
+      if (profile?.tipo === 'client' || user.tipo === 'client') {
         // Para clientes, mostrar apenas prontuários dos seus pets
         const { data: clientPets } = await supabase
           .from('pets')
@@ -68,7 +59,7 @@ const Prontuarios = () => {
           setIsLoading(false);
           return;
         }
-      } else if (user.tipo === 'vet') {
+      } else if (profile?.tipo === 'vet' || user.tipo === 'vet') {
         // Para veterinários, mostrar apenas seus prontuários
         query = query.eq('vet_id', user.id);
       }
@@ -84,11 +75,11 @@ const Prontuarios = () => {
         petId: item.pet_id,
         consultaId: item.consulta_id,
         vetId: item.vet_id,
-        anamnese: item.anamnese,
+        anamnese: item.anamnese || "",
         data: item.consultas?.data,
-        diagnostico: item.diagnostico || item.consultas?.diagnostico,
-        prescricao: item.prescricao || '',
-        observacoes: item.observacoes || '',
+        diagnostico: item.diagnostico || item.consultas?.diagnostico || "",
+        prescricao: item.prescricao || "",
+        observacoes: item.observacoes || "",
         petNome: item.pets?.nome,
         vetNome: item.profiles?.nome
       }));

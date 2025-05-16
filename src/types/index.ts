@@ -1,3 +1,4 @@
+
 export type UserType = 'client' | 'vet' | 'admin';
 
 export interface Address {
@@ -58,6 +59,9 @@ export interface Agendamento {
   status: 'agendado' | 'confirmado' | 'concluido' | 'cancelado';
   observacoes?: string;
   createdAt: string;
+  diagnostico?: string;
+  prescricao?: string;
+  recomendacoes?: string;
 }
 
 export interface Consulta extends Agendamento {
@@ -115,4 +119,17 @@ export interface UserProfile {
   tipo: 'client' | 'vet' | 'admin';
   created_at?: string;
   updated_at?: string;
+}
+
+// Adicionar a interface Prontuario
+export interface Prontuario {
+  id: string;
+  consultaId: string;
+  petId: string;
+  vetId: string;
+  anamnese: string;
+  diagnostico: string;
+  prescricao: string;
+  observacoes: string;
+  data?: string;
 }

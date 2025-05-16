@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import AdminDashboardLayout from "@/components/layouts/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,29 +34,45 @@ const Consultas = () => {
   const carregarConsultas = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First fetch the consultations
+      const { data: consultasData, error: consultasError } = await supabase
         .from('consultas')
-        .select(`
-          *,
-          profiles_vet:vet_id(nome),
-          profiles_client:client_id(nome),
-          pets:pet_id(nome)
-        `);
+        .select('*');
       
-      if (error) throw error;
+      if (consultasError) throw consultasError;
       
-      // Mapear os dados para o formato correto com as relações
-      const consultasFormatadas = data?.map(consulta => {
+      // Fetch related profiles and pets data
+      const [clientsResponse, vetsResponse, petsResponse] = await Promise.all([
+        supabase.from('profiles').select('id, nome').eq('tipo', 'client'),
+        supabase.from('profiles').select('id, nome').eq('tipo', 'vet'),
+        supabase.from('pets').select('id, nome')
+      ]);
+      
+      if (clientsResponse.error) throw clientsResponse.error;
+      if (vetsResponse.error) throw vetsResponse.error;
+      if (petsResponse.error) throw petsResponse.error;
+      
+      // Create lookup maps for clients, vets, and pets
+      const clientsMap = new Map(clientsResponse.data?.map(client => [client.id, client]) || []);
+      const vetsMap = new Map(vetsResponse.data?.map(vet => [vet.id, vet]) || []);
+      const petsMap = new Map(petsResponse.data?.map(pet => [pet.id, pet]) || []);
+      
+      // Combine the data
+      const consultasFormatadas = consultasData?.map(consulta => {
+        const clientData = clientsMap.get(consulta.client_id);
+        const vetData = vetsMap.get(consulta.vet_id);
+        const petData = petsMap.get(consulta.pet_id);
+        
         return {
           ...consulta,
           profiles_client: { 
-            nome: consulta.profiles_client?.nome || "-" 
+            nome: clientData?.nome || "-" 
           },
           profiles_vet: { 
-            nome: consulta.profiles_vet?.nome || "-" 
+            nome: vetData?.nome || "-" 
           },
           pets: { 
-            nome: consulta.pets?.nome || "-" 
+            nome: petData?.nome || "-" 
           }
         };
       }) || [];

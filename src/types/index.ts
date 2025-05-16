@@ -85,9 +85,7 @@ export interface ConsultaDB {
   diagnostico?: string;
   prescricao?: string;
   recomendacoes?: string;
-  vet_nome?: string;
-  pet_nome?: string;
-  // Adicionando campos para relações aninhadas
+  // Adicionando campos para relações aninhadas que serão adicionados após a consulta
   profiles_client?: { nome: string };
   profiles_vet?: { nome: string };
   pets?: { nome: string };

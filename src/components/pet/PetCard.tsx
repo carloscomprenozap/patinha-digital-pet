@@ -4,17 +4,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Dog, Cat, Bird, FileText, Pencil } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { Pet } from '@/types';
 
 interface PetCardProps {
-  pet: {
-    id: string;
-    nome: string;
-    especie: string;
-    raca: string;
-    idade: number;
-    peso: number;
-    observacoes?: string;
-  };
+  pet: Pet;
   onEdit?: () => void;
 }
 

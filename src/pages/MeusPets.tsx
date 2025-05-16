@@ -35,20 +35,30 @@ const MeusPets = () => {
         
       if (error) throw error;
       
-      // Format pets data
-      const formattedPets = data.map(pet => ({
-        id: pet.id,
-        nome: pet.nome,
-        especie: pet.especie,
-        raca: pet.raca,
-        idade: pet.idade,
-        peso: pet.peso,
-        observacoes: pet.observacoes,
-        clientId: pet.client_id,
-        client_id: pet.client_id,
-        created_at: pet.created_at,
-        updated_at: pet.updated_at
-      }));
+      // Format pets data and validate especie field
+      const formattedPets = data.map(pet => {
+        // Validate and sanitize the especie field
+        let validEspecie: 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro' = 'outro';
+        
+        // Check if the especie is one of the allowed values
+        if (['cachorro', 'gato', 'ave', 'roedor', 'réptil', 'outro'].includes(pet.especie.toLowerCase())) {
+          validEspecie = pet.especie.toLowerCase() as 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro';
+        }
+        
+        return {
+          id: pet.id,
+          nome: pet.nome,
+          especie: validEspecie,
+          raca: pet.raca,
+          idade: pet.idade,
+          peso: pet.peso,
+          observacoes: pet.observacoes,
+          clientId: pet.client_id,
+          client_id: pet.client_id,
+          created_at: pet.created_at,
+          updated_at: pet.updated_at
+        } as Pet;
+      });
       
       setPets(formattedPets);
     } catch (error) {

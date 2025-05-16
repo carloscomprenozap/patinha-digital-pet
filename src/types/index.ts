@@ -1,4 +1,3 @@
-
 export type UserType = 'client' | 'vet' | 'admin';
 
 export interface Address {
@@ -87,6 +86,30 @@ export interface ConsultaDB {
   recomendacoes?: string;
   vet_nome?: string;
   pet_nome?: string;
+}
+
+// Interface para disponibilidade do veterinário
+export interface DisponibilidadeDB {
+  id: string;
+  vet_id: string;
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fim: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Interface para veterinário com dados do banco
+export interface VeterinarioProfile {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  tipo: 'vet';
+  crmv: string;
+  preco_consulta: number;
+  especialidades?: string[];
+  endereco?: Address;
 }
 
 export interface Disponibilidade {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Veterinarian, Address, HorarioDisponivel, Pet } from '@/types';
+import { Veterinarian, Address, HorarioDisponivel, Pet, VeterinarioProfile } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { Calendar } from '@/components/ui/calendar';
@@ -23,9 +24,9 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, MapPin, User, Clock, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
-import { veterinariosMock, petsMock, gerarHorariosDisponiveis } from '@/data/mockData';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const estadosBrasileiros = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -35,39 +36,115 @@ const estadosBrasileiros = [
 
 const AgendarConsulta = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [filtros, setFiltros] = useState({
     estado: "",
     cidade: "",
     bairro: ""
   });
-  const [veterinariosFiltrados, setVeterinariosFiltrados] = useState<Veterinarian[]>([]);
-  const [veterinarioSelecionado, setVeterinarioSelecionado] = useState<Veterinarian | null>(null);
+  const [veterinariosFiltrados, setVeterinariosFiltrados] = useState<VeterinarioProfile[]>([]);
+  const [veterinarioSelecionado, setVeterinarioSelecionado] = useState<VeterinarioProfile | null>(null);
   const [petSelecionado, setPetSelecionado] = useState("");
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined);
   const [horarioSelecionado, setHorarioSelecionado] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
-  const [datasDisponiveis, setDatasDisponiveis] = useState<HorarioDisponivel[]>([]);
+  const [datasDisponiveis, setDatasDisponiveis] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [petsMeusTutores, setPetsMeusTutores] = useState<Pet[]>([]);
 
   // Carregar pets do usuário logado
   useEffect(() => {
     if (user) {
-      const petsDoUsuario = petsMock.filter(pet => pet.clientId === user.id);
-      setPetsMeusTutores(petsDoUsuario);
+      carregarPets();
     }
   }, [user]);
 
+  const carregarPets = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('pets')
+        .select('*')
+        .eq('client_id', user.id);
+        
+      if (error) throw error;
+      
+      setPetsMeusTutores(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar pets:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar seus pets",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Filtra veterinários baseado nos filtros
-  const filtrarVeterinarios = () => {
+  const filtrarVeterinarios = async () => {
     setIsLoading(true);
     
-    // Simulando um delay de rede
-    setTimeout(() => {
-      const resultado = veterinariosMock.filter((vet) => {
-        const matchEstado = filtros.estado === "todos" || !filtros.estado || vet.endereco.estado.includes(filtros.estado);
+    try {
+      // Buscar veterinários do banco
+      let query = supabase
+        .from('veterinarios')
+        .select(`
+          *,
+          profiles:id(nome, telefone, tipo),
+          enderecos:id(cep, estado, cidade, bairro, logradouro, numero, complemento)
+        `);
+        
+      // Aplicar filtros
+      const { data: veterinariosData, error } = await query;
+      
+      if (error) throw error;
+      
+      // Buscar endereços dos veterinários
+      const vetIds = veterinariosData.map(vet => vet.id);
+      
+      const { data: enderecosData, error: enderecosError } = await supabase
+        .from('enderecos')
+        .select('*')
+        .in('user_id', vetIds);
+        
+      if (enderecosError) throw enderecosError;
+      
+      // Mapear dados para o formato correto
+      const veterinarios = veterinariosData.map(vet => {
+        const endereco = enderecosData?.find(e => e.user_id === vet.id);
+        
+        return {
+          id: vet.id,
+          nome: vet.profiles?.nome || 'Sem nome',
+          email: '',
+          telefone: vet.profiles?.telefone || '',
+          tipo: 'vet' as const,
+          crmv: vet.crmv || '',
+          preco_consulta: vet.preco_consulta || 0,
+          endereco: endereco ? {
+            cep: endereco.cep,
+            estado: endereco.estado,
+            cidade: endereco.cidade,
+            bairro: endereco.bairro,
+            logradouro: endereco.logradouro,
+            numero: endereco.numero,
+            complemento: endereco.complemento
+          } : undefined
+        };
+      });
+      
+      // Aplicar filtros localmente
+      const resultado = veterinarios.filter((vet) => {
+        if (!vet.endereco) return false;
+        
+        const matchEstado = !filtros.estado || filtros.estado === "todos" || 
+          vet.endereco.estado.toLowerCase() === filtros.estado.toLowerCase();
         const matchCidade = !filtros.cidade || 
           vet.endereco.cidade.toLowerCase().includes(filtros.cidade.toLowerCase());
         const matchBairro = !filtros.bairro || 
@@ -77,40 +154,162 @@ const AgendarConsulta = () => {
       });
       
       setVeterinariosFiltrados(resultado);
+    } catch (error) {
+      console.error("Erro ao buscar veterinários:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível buscar os veterinários",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
+  };
+
+  // Carregar horários disponíveis quando um veterinário é selecionado
+  useEffect(() => {
+    if (veterinarioSelecionado) {
+      carregarDisponibilidade(veterinarioSelecionado.id);
+    }
+  }, [veterinarioSelecionado]);
+
+  // Carregar disponibilidade do veterinário
+  const carregarDisponibilidade = async (vetId: string) => {
+    setIsLoading(true);
+    
+    try {
+      // Buscar disponibilidades do veterinário
+      const { data, error } = await supabase
+        .from('disponibilidades')
+        .select('*')
+        .eq('vet_id', vetId);
+        
+      if (error) throw error;
+      
+      // Calcular datas disponíveis para os próximos 30 dias
+      const hoje = new Date();
+      const datasDisponiveis: Date[] = [];
+      const disponibilidades = data || [];
+      
+      // Dias da semana disponíveis
+      const diasDisponiveisSet = new Set(disponibilidades.map(d => d.dia_semana));
+      
+      // Próximos 30 dias
+      for (let i = 0; i < 30; i++) {
+        const data = new Date();
+        data.setDate(hoje.getDate() + i);
+        
+        // Verificar se o dia da semana está disponível
+        if (diasDisponiveisSet.has(data.getDay())) {
+          datasDisponiveis.push(new Date(data));
+        }
+      }
+      
+      setDatasDisponiveis(datasDisponiveis);
+      
+      // Limpar seleção prévia
+      setDataSelecionada(undefined);
+      setHorarioSelecionado("");
+      
+    } catch (error) {
+      console.error("Erro ao carregar disponibilidade:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a disponibilidade do veterinário",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Gerar horários disponíveis para a data selecionada
+  const gerarHorariosDisponiveis = async (data: Date) => {
+    if (!veterinarioSelecionado) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Buscar disponibilidade para o dia da semana
+      const diaDaSemana = data.getDay(); // 0 = domingo, 6 = sábado
+      
+      const { data: disponibilidadeDia, error } = await supabase
+        .from('disponibilidades')
+        .select('*')
+        .eq('vet_id', veterinarioSelecionado.id)
+        .eq('dia_semana', diaDaSemana);
+        
+      if (error) throw error;
+      
+      if (!disponibilidadeDia || disponibilidadeDia.length === 0) {
+        setHorariosDisponiveis([]);
+        return;
+      }
+      
+      // Gerar horários de 30 em 30 minutos dentro do intervalo disponível
+      const horarios: string[] = [];
+      
+      disponibilidadeDia.forEach(disponibilidade => {
+        const [horaInicio, minutoInicio] = disponibilidade.hora_inicio.split(':').map(Number);
+        const [horaFim, minutoFim] = disponibilidade.hora_fim.split(':').map(Number);
+        
+        // Converter para minutos desde o início do dia
+        const inicioMinutos = horaInicio * 60 + minutoInicio;
+        const fimMinutos = horaFim * 60 + minutoFim;
+        
+        // Gerar horários a cada 30 minutos
+        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += 30) {
+          const hora = Math.floor(minutos / 60);
+          const minuto = minutos % 60;
+          const horarioFormatado = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+          horarios.push(horarioFormatado);
+        }
+      });
+      
+      // Verificar se há consultas já agendadas para esta data
+      const dataFormatada = format(data, 'yyyy-MM-dd');
+      
+      const { data: consultasAgendadas, error: consultasError } = await supabase
+        .from('consultas')
+        .select('horario')
+        .eq('vet_id', veterinarioSelecionado.id)
+        .eq('data', dataFormatada)
+        .in('status', ['agendado', 'confirmado']);
+        
+      if (consultasError) throw consultasError;
+      
+      // Filtrar horários já agendados
+      const horariosAgendados = new Set(consultasAgendadas?.map(c => c.horario) || []);
+      const horariosDisponiveis = horarios.filter(horario => !horariosAgendados.has(horario));
+      
+      setHorariosDisponiveis(horariosDisponiveis);
+      
+    } catch (error) {
+      console.error("Erro ao gerar horários disponíveis:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar os horários disponíveis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Atualizar horários disponíveis quando a data é selecionada
   useEffect(() => {
     if (dataSelecionada && veterinarioSelecionado) {
-      const dataFormatada = format(dataSelecionada, 'yyyy-MM-dd');
-      const disponibilidadeDia = datasDisponiveis.find(d => d.data === dataFormatada);
-      
-      if (disponibilidadeDia) {
-        setHorariosDisponiveis(disponibilidadeDia.horarios);
-      } else {
-        setHorariosDisponiveis([]);
-      }
-      setHorarioSelecionado("");
+      gerarHorariosDisponiveis(dataSelecionada);
     }
-  }, [dataSelecionada, veterinarioSelecionado, datasDisponiveis]);
+  }, [dataSelecionada, veterinarioSelecionado]);
 
-  // Carregar horários disponíveis quando um veterinário é selecionado
-  useEffect(() => {
-    if (veterinarioSelecionado) {
-      const horariosVet = gerarHorariosDisponiveis(veterinarioSelecionado.id);
-      setDatasDisponiveis(horariosVet);
-    }
-  }, [veterinarioSelecionado]);
-
-  const selecionarVeterinario = (vet: Veterinarian) => {
+  const selecionarVeterinario = (vet: VeterinarioProfile) => {
     setVeterinarioSelecionado(vet);
     setStep(2);
   };
 
-  const finalizarAgendamento = () => {
-    if (!dataSelecionada || !horarioSelecionado || !petSelecionado) {
+  const finalizarAgendamento = async () => {
+    if (!user || !dataSelecionada || !horarioSelecionado || !petSelecionado || !veterinarioSelecionado) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios",
@@ -121,9 +320,26 @@ const AgendarConsulta = () => {
     
     setIsLoading(true);
     
-    // Simulando um delay de rede
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Formatar data para o banco
+      const dataFormatada = format(dataSelecionada, 'yyyy-MM-dd');
+      
+      // Criar agendamento no banco
+      const { data, error } = await supabase
+        .from('consultas')
+        .insert({
+          client_id: user.id,
+          vet_id: veterinarioSelecionado.id,
+          pet_id: petSelecionado,
+          data: dataFormatada,
+          horario: horarioSelecionado,
+          status: 'agendado',
+          observacoes: observacoes
+        })
+        .select();
+        
+      if (error) throw error;
+      
       toast({
         title: "Consulta agendada com sucesso!",
         description: `Agendamento realizado para ${format(dataSelecionada, 'dd/MM/yyyy')} às ${horarioSelecionado}`,
@@ -138,7 +354,17 @@ const AgendarConsulta = () => {
       setObservacoes("");
       setHorariosDisponiveis([]);
       setDatasDisponiveis([]);
-    }, 1500);
+      
+    } catch (error) {
+      console.error("Erro ao agendar consulta:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível agendar a consulta",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const voltar = () => {
@@ -148,7 +374,8 @@ const AgendarConsulta = () => {
   };
 
   // Renderizar endereço formatado
-  const renderizarEndereco = (endereco: Address) => {
+  const renderizarEndereco = (endereco?: Address) => {
+    if (!endereco) return "Endereço não cadastrado";
     return `${endereco.logradouro}, ${endereco.numero} - ${endereco.bairro}, ${endereco.cidade} - ${endereco.estado}`;
   };
 
@@ -273,23 +500,14 @@ const AgendarConsulta = () => {
                             </div>
                             
                             <div className="space-y-1">
-                              <p className="text-sm font-medium">Especialidades:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {vet.especialidades.map((esp) => (
-                                  <span 
-                                    key={esp} 
-                                    className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md"
-                                  >
-                                    {esp}
-                                  </span>
-                                ))}
-                              </div>
+                              <p className="text-sm font-medium">CRMV:</p>
+                              <p className="text-sm">{vet.crmv}</p>
                             </div>
                             
                             <p className="text-sm">
                               <span className="font-medium">Valor da consulta: </span>
                               <span className="text-lg font-semibold text-primary">
-                                R$ {vet.precoConsulta.toFixed(2)}
+                                R$ {vet.preco_consulta.toFixed(2)}
                               </span>
                             </p>
                           </div>
@@ -368,8 +586,12 @@ const AgendarConsulta = () => {
                             
                             if (date < currentDate) return true;
                             
-                            const formattedDate = format(date, 'yyyy-MM-dd');
-                            return !datasDisponiveis.some(d => d.data === formattedDate);
+                            // Verificar se a data está na lista de datas disponíveis
+                            return !datasDisponiveis.some(d => 
+                              d.getDate() === date.getDate() && 
+                              d.getMonth() === date.getMonth() && 
+                              d.getFullYear() === date.getFullYear()
+                            );
                           }}
                           initialFocus
                           className={cn("p-3 pointer-events-auto")}
@@ -394,6 +616,12 @@ const AgendarConsulta = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    
+                    {dataSelecionada && horariosDisponiveis.length === 0 && (
+                      <p className="text-sm text-destructive">
+                        Não há horários disponíveis para esta data.
+                      </p>
+                    )}
                   </div>
                 </div>
                 
@@ -461,17 +689,8 @@ const AgendarConsulta = () => {
                     </div>
                     
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Especialidades</p>
-                      <div className="flex flex-wrap gap-2">
-                        {veterinarioSelecionado.especialidades.map((esp) => (
-                          <span 
-                            key={esp} 
-                            className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md"
-                          >
-                            {esp}
-                          </span>
-                        ))}
-                      </div>
+                      <p className="text-sm text-muted-foreground">CRMV</p>
+                      <p className="font-medium">{veterinarioSelecionado.crmv}</p>
                     </div>
                     
                     <div className="space-y-1">
@@ -513,7 +732,7 @@ const AgendarConsulta = () => {
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Valor da consulta</p>
                       <p className="text-lg font-semibold text-primary">
-                        R$ {veterinarioSelecionado.precoConsulta.toFixed(2)}
+                        R$ {veterinarioSelecionado.preco_consulta.toFixed(2)}
                       </p>
                     </div>
                   </div>

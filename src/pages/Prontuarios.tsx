@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -40,7 +39,7 @@ const Prontuarios = () => {
           *,
           pets:pet_id(nome),
           consultas:consulta_id(data, diagnostico),
-          profiles:vet_id(nome)
+          vet:vet_id(id, profiles(nome))
         `);
       
       // Filtrar por tipo de usuário
@@ -82,7 +81,7 @@ const Prontuarios = () => {
         prescricao: item.prescricao || "",
         observacoes: item.observacoes || "",
         petNome: item.pets?.nome,
-        vetNome: item.profiles?.nome
+        vetNome: item.vet?.profiles?.nome
       }));
       
       setProntuarios(formattedProntuarios);

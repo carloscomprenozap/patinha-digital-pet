@@ -39,7 +39,7 @@ const Prontuarios = () => {
           *,
           pets:pet_id(nome),
           consultas:consulta_id(data, diagnostico),
-          vet:vet_id(id, profiles(nome))
+          veterinarios:vet_id(profiles(nome))
         `);
       
       // Filtrar por tipo de usuário
@@ -81,7 +81,7 @@ const Prontuarios = () => {
         prescricao: item.prescricao || "",
         observacoes: item.observacoes || "",
         petNome: item.pets?.nome,
-        vetNome: item.vet?.profiles?.nome
+        vetNome: item.veterinarios?.profiles?.nome
       }));
       
       setProntuarios(formattedProntuarios);

@@ -1,11 +1,13 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { petsMock, agendamentosMock, veterinariosMock } from "@/data/mockData";
 import ProntuarioSearchBar from "@/components/prontuarios/ProntuarioSearchBar";
 import ProntuarioCard from "@/components/prontuarios/ProntuarioCard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Prontuario {
   id: string;
@@ -16,53 +18,112 @@ interface Prontuario {
   diagnostico: string;
   prescricao: string;
   observacoes: string;
+  petNome?: string;
+  vetNome?: string;
 }
 
 const Prontuarios = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [prontuarios, setProntuarios] = useState<Prontuario[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
   
-  // Mock data for user and pets
-  const userId = "u1"; // Mock user ID
-  const userPets = petsMock.filter(pet => pet.clientId === userId);
+  useEffect(() => {
+    if (user) {
+      loadProntuarios();
+    }
+  }, [user]);
   
-  // Create mock prontuarios based on past appointments
-  const consultasConcluidas = agendamentosMock.filter(
-    a => a.clientId === userId && a.status === 'concluido'
-  );
-  
-  const prontuarios: Prontuario[] = consultasConcluidas.map(consulta => ({
-    id: `pr-${consulta.id}`,
-    petId: consulta.petId,
-    consultaId: consulta.id,
-    vetId: consulta.vetId,
-    data: consulta.data,
-    diagnostico: "Diagnóstico do paciente",
-    prescricao: "Prescrição de medicamentos",
-    observacoes: "Observações clínicas"
-  }));
+  const loadProntuarios = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      let query = supabase.from('prontuarios')
+        .select(`
+          *,
+          pets:pet_id(nome),
+          consultas:consulta_id(data, diagnostico),
+          veterinarios:vet_id(id),
+          profiles:veterinarios!inner(nome)
+        `);
+      
+      // Filtrar por tipo de usuário
+      if (user.tipo === 'client') {
+        // Para clientes, mostrar apenas prontuários dos seus pets
+        const { data: clientPets } = await supabase
+          .from('pets')
+          .select('id')
+          .eq('client_id', user.id);
+        
+        if (clientPets && clientPets.length > 0) {
+          const petIds = clientPets.map(pet => pet.id);
+          query = query.in('pet_id', petIds);
+        } else {
+          // Sem pets cadastrados
+          setProntuarios([]);
+          setIsLoading(false);
+          return;
+        }
+      } else if (user.tipo === 'vet') {
+        // Para veterinários, mostrar apenas seus prontuários
+        query = query.eq('vet_id', user.id);
+      }
+      // Para admin, mostrar todos
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      // Formatar os dados
+      const formattedProntuarios = data.map(item => ({
+        id: item.id,
+        petId: item.pet_id,
+        consultaId: item.consulta_id,
+        vetId: item.vet_id,
+        anamnese: item.anamnese,
+        data: item.consultas?.data,
+        diagnostico: item.diagnostico || item.consultas?.diagnostico,
+        prescricao: item.prescricao || '',
+        observacoes: item.observacoes || '',
+        petNome: item.pets?.nome,
+        vetNome: item.profiles?.nome
+      }));
+      
+      setProntuarios(formattedProntuarios);
+    } catch (error) {
+      console.error("Erro ao carregar prontuários:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os prontuários",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const filteredProntuarios = searchTerm 
     ? prontuarios.filter(p => {
-        const pet = petsMock.find(pet => pet.id === p.petId);
-        const vet = veterinariosMock.find(vet => vet.id === p.vetId);
-        
         return (
-          pet?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          vet?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.diagnostico.toLowerCase().includes(searchTerm.toLowerCase())
+          p.petNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.vetNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.diagnostico?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       })
     : prontuarios;
   
   const getPetNome = (petId: string) => {
-    const pet = petsMock.find(p => p.id === petId);
-    return pet ? pet.nome : 'Pet não encontrado';
+    const prontuario = prontuarios.find(p => p.petId === petId);
+    return prontuario?.petNome || 'Pet não encontrado';
   };
   
   const getVeterinarioNome = (vetId: string) => {
-    const vet = veterinariosMock.find(v => v.id === vetId);
-    return vet ? vet.nome : 'Veterinário não encontrado';
+    const prontuario = prontuarios.find(p => p.vetId === vetId);
+    return prontuario?.vetNome || 'Veterinário não encontrado';
   };
   
   const formatarData = (dataString: string) => {
@@ -74,8 +135,8 @@ const Prontuarios = () => {
     });
   };
   
-  const handleVerProntuario = (prontuarioId: string) => {
-    navigate(`/prontuario?id=${prontuarioId}`);
+  const handleVerProntuario = (prontuario: Prontuario) => {
+    navigate(`/prontuario?consultaId=${prontuario.consultaId}&petId=${prontuario.petId}`);
   };
 
   return (
@@ -93,7 +154,11 @@ const Prontuarios = () => {
           setSearchTerm={setSearchTerm} 
         />
         
-        {filteredProntuarios.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center p-8">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : filteredProntuarios.length > 0 ? (
           <div className="space-y-4">
             {filteredProntuarios.map((prontuario) => (
               <ProntuarioCard
@@ -102,7 +167,7 @@ const Prontuarios = () => {
                 getPetNome={getPetNome}
                 getVeterinarioNome={getVeterinarioNome}
                 formatarData={formatarData}
-                handleVerProntuario={handleVerProntuario}
+                handleVerProntuario={() => handleVerProntuario(prontuario)}
               />
             ))}
           </div>

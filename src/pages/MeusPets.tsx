@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import { Pet } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { useForm } from "react-hook-form";
+import { fetchPets, createPet, updatePet, deletePet } from "@/services/api";
 
 // Helper para validar e converter a espécie
 const validateEspecie = (especie: string): 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro' => {
@@ -29,7 +28,6 @@ const MeusPets = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate();
   
   const form = useForm<Pet>({
     defaultValues: {
@@ -44,27 +42,21 @@ const MeusPets = () => {
 
   useEffect(() => {
     if (user) {
-      fetchPets();
+      loadPets();
     }
   }, [user]);
 
-  const fetchPets = async () => {
+  const loadPets = async () => {
     if (!user) return;
     
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("pets")
-        .select("*")
-        .eq("client_id", user.id);
+      const data = await fetchPets(user.id);
       
-      if (error) {
-        throw error;
-      }
-
       // Map do banco para o formato da aplicação
       const formattedPets = data.map(pet => ({
         ...pet,
+        id: pet.id,
         clientId: pet.client_id,
         especie: validateEspecie(pet.especie)
       }));
@@ -113,43 +105,32 @@ const MeusPets = () => {
     
     setIsLoading(true);
     try {
-      const petData = {
-        nome: data.nome,
-        especie: validateEspecie(data.especie),
-        raca: data.raca,
-        idade: data.idade,
-        peso: data.peso,
-        observacoes: data.observacoes || "",
-        client_id: user.id
-      };
-
-      let result;
       if (editingPet) {
         // Atualizar pet existente
-        result = await supabase
-          .from("pets")
-          .update(petData)
-          .eq("id", editingPet.id);
+        await updatePet(editingPet.id, {
+          ...data,
+          clientId: user.id
+        });
+        
+        toast({
+          title: "Pet atualizado",
+          description: "Informações do pet atualizadas com sucesso."
+        });
       } else {
         // Criar novo pet
-        result = await supabase
-          .from("pets")
-          .insert([petData]);
+        await createPet({
+          ...data,
+          clientId: user.id
+        });
+        
+        toast({
+          title: "Pet cadastrado",
+          description: "Pet cadastrado com sucesso."
+        });
       }
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      toast({
-        title: editingPet ? "Pet atualizado" : "Pet cadastrado",
-        description: editingPet
-          ? "Informações do pet atualizadas com sucesso."
-          : "Pet cadastrado com sucesso.",
-      });
 
       closeModal();
-      fetchPets();
+      loadPets();
     } catch (error) {
       console.error("Erro ao salvar pet:", error);
       toast({
@@ -167,20 +148,13 @@ const MeusPets = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("pets")
-        .delete()
-        .eq("id", petId);
+      await deletePet(petId);
       
-      if (error) {
-        throw error;
-      }
-
       setPets(pets.filter(pet => pet.id !== petId));
       
       toast({
         title: "Pet removido",
-        description: "O pet foi removido com sucesso.",
+        description: "O pet foi removido com sucesso."
       });
     } catch (error) {
       console.error("Erro ao excluir pet:", error);

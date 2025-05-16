@@ -1,16 +1,21 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Stethoscope, Calendar, FileText } from "lucide-react";
 
-interface ProntuarioCardProps {
-  prontuario: any;
+interface ProntuarioProps {
+  prontuario: {
+    id: string;
+    petId: string;
+    vetId: string;
+    diagnostico: string;
+    data?: string;
+  };
   getPetNome: (petId: string) => string;
   getVeterinarioNome: (vetId: string) => string;
-  formatarData: (dataString: string) => string;
-  handleVerProntuario: (prontuarioId: string) => void;
+  formatarData: (data: string) => string;
+  handleVerProntuario: (id: string) => void;
 }
 
 const ProntuarioCard = ({
@@ -19,38 +24,49 @@ const ProntuarioCard = ({
   getVeterinarioNome,
   formatarData,
   handleVerProntuario
-}: ProntuarioCardProps) => {
+}: ProntuarioProps) => {
   return (
-    <Card key={prontuario.id} className="overflow-hidden">
-      <CardHeader className="pb-2">
+    <Card>
+      <CardHeader className="bg-secondary/10 pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <span>{getPetNome(prontuario.petId)}</span>
-              <Badge variant="outline" className="ml-2">
-                {formatarData(prontuario.data)}
-              </Badge>
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Dr. {getVeterinarioNome(prontuario.vetId)}
-            </CardDescription>
+            <h3 className="text-lg font-bold">
+              {getPetNome(prontuario.petId)}
+            </h3>
+            <div className="flex items-center text-muted-foreground">
+              <Calendar className="h-4 w-4 mr-1" />
+              {prontuario.data ? formatarData(prontuario.data) : "Data não disponível"}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center justify-end">
+              <Stethoscope className="h-4 w-4 mr-1" />
+              <span>{getVeterinarioNome(prontuario.vetId)}</span>
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-sm">
-          <div className="font-semibold mb-1">Diagnóstico</div>
-          <p className="text-muted-foreground">{prontuario.diagnostico}</p>
+      
+      <CardContent className="pt-4">
+        <div>
+          <h4 className="text-sm font-semibold">Diagnóstico:</h4>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {prontuario.diagnostico || "Não informado"}
+          </p>
         </div>
-        
+      </CardContent>
+      
+      <CardFooter className="flex justify-between pt-2">
         <Button 
-          className="w-full flex items-center justify-center gap-2"
+          variant="outline" 
+          size="sm"
+          className="flex items-center"
           onClick={() => handleVerProntuario(prontuario.id)}
         >
-          <FileText className="h-4 w-4" />
-          Ver Prontuário Completo
+          <FileText className="h-4 w-4 mr-1" />
+          Ver prontuário
         </Button>
-      </CardContent>
+      </CardFooter>
     </Card>
   );
 };

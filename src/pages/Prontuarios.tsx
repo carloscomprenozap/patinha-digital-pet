@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -43,7 +44,7 @@ const Prontuarios = () => {
         `);
       
       // Filtrar por tipo de usuário
-      if (profile?.tipo === 'client' || user.tipo === 'client') {
+      if (profile?.tipo === 'client') {
         // Para clientes, mostrar apenas prontuários dos seus pets
         const { data: clientPets } = await supabase
           .from('pets')
@@ -59,7 +60,7 @@ const Prontuarios = () => {
           setIsLoading(false);
           return;
         }
-      } else if (profile?.tipo === 'vet' || user.tipo === 'vet') {
+      } else if (profile?.tipo === 'vet') {
         // Para veterinários, mostrar apenas seus prontuários
         query = query.eq('vet_id', user.id);
       }

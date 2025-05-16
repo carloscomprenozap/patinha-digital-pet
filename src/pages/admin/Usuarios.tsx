@@ -30,7 +30,7 @@ import { Search, PlusCircle, UserPlus, User, Calendar, Mail, Phone } from "lucid
 interface UserData {
   id: string;
   nome: string;
-  email: string;
+  email?: string; // Making email optional
   telefone: string;
   tipo: string;
   created_at: string;
@@ -56,7 +56,17 @@ const Usuarios = () => {
       
       if (error) throw error;
       
-      setUsuarios(data || []);
+      // Transformar os dados para corresponder à interface UserData
+      const usuariosFormatados = data?.map(user => ({
+        id: user.id,
+        nome: user.nome,
+        email: "", // Placeholder já que não temos email no resultado da consulta
+        telefone: user.telefone || "",
+        tipo: user.tipo,
+        created_at: user.created_at
+      })) || [];
+      
+      setUsuarios(usuariosFormatados);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
       toast({

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -73,7 +72,22 @@ const AgendarConsulta = () => {
         
       if (error) throw error;
       
-      setPetsMeusTutores(data || []);
+      // Mapeando os dados para o formato esperado pela interface Pet
+      const petsFormatados = data?.map(pet => ({
+        id: pet.id,
+        nome: pet.nome,
+        especie: pet.especie as 'cachorro' | 'gato' | 'ave' | 'roedor' | 'réptil' | 'outro',
+        raca: pet.raca,
+        idade: pet.idade,
+        peso: pet.peso,
+        observacoes: pet.observacoes || undefined,
+        clientId: pet.client_id,
+        client_id: pet.client_id,
+        created_at: pet.created_at,
+        updated_at: pet.updated_at
+      })) || [];
+      
+      setPetsMeusTutores(petsFormatados);
     } catch (error) {
       console.error("Erro ao carregar pets:", error);
       toast({

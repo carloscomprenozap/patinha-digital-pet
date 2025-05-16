@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import AdminDashboardLayout from "@/components/layouts/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -56,39 +55,29 @@ const Veterinarios = () => {
   const carregarVeterinarios = async () => {
     setIsLoading(true);
     try {
-      // Buscar veterinários e seus perfis
-      const { data: veterinariosData, error } = await supabase
+      const { data, error } = await supabase
         .from('veterinarios')
         .select(`
           *,
-          profiles:id(id, nome, email, telefone, created_at)
+          profiles:id(nome, telefone)
         `);
       
       if (error) throw error;
       
-      // Buscar endereços dos veterinários
-      const vetIds = veterinariosData?.map(vet => vet.id) || [];
+      const vetsFormatados = data?.map(vet => {
+        return {
+          id: vet.id,
+          nome: vet.profiles?.nome || "Nome não disponível",
+          email: "",
+          telefone: vet.profiles?.telefone || "Telefone não disponível",
+          crmv: vet.crmv,
+          preco_consulta: vet.preco_consulta,
+          created_at: vet.created_at,
+          // outros campos conforme necessário
+        };
+      }) || [];
       
-      const { data: enderecosData, error: enderecosError } = await supabase
-        .from('enderecos')
-        .select('*')
-        .in('user_id', vetIds);
-        
-      if (enderecosError) throw enderecosError;
-      
-      // Preparar dados formatados
-      const veterinariosFormatados = veterinariosData?.map(vet => ({
-        id: vet.id,
-        nome: vet.profiles?.nome || 'Nome não disponível',
-        email: vet.profiles?.email || 'Email não disponível',
-        telefone: vet.profiles?.telefone || 'Telefone não disponível',
-        crmv: vet.crmv,
-        preco_consulta: vet.preco_consulta,
-        created_at: vet.profiles?.created_at || '',
-        endereco: enderecosData?.find(end => end.user_id === vet.id)
-      })) || [];
-      
-      setVeterinarios(veterinariosFormatados);
+      setVeterinarios(vetsFormatados);
     } catch (error) {
       console.error("Erro ao carregar veterinários:", error);
       toast({

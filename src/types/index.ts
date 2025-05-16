@@ -1,3 +1,4 @@
+
 export type UserType = 'client' | 'vet' | 'admin';
 
 export interface Address {
@@ -86,6 +87,10 @@ export interface ConsultaDB {
   recomendacoes?: string;
   vet_nome?: string;
   pet_nome?: string;
+  // Adicionando campos para relações aninhadas
+  profiles_client?: { nome: string };
+  profiles_vet?: { nome: string };
+  pets?: { nome: string };
 }
 
 // Interface para disponibilidade do veterinário
@@ -142,6 +147,16 @@ export interface UserProfile {
   tipo: 'client' | 'vet' | 'admin';
   created_at?: string;
   updated_at?: string;
+}
+
+// Interface para dados do usuario no admin dashboard
+export interface UserData {
+  id: string;
+  nome: string;
+  email?: string; // Tornando email opcional para corresponder ao banco
+  telefone: string;
+  tipo: string;
+  created_at: string;
 }
 
 // Adicionar a interface Prontuario

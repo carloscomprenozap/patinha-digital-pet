@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import AdminDashboardLayout from "@/components/layouts/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,7 +37,6 @@ const Consultas = () => {
         .from('consultas')
         .select(`
           *,
-          veterinarios:vet_id(id),
           profiles_vet:vet_id(nome),
           profiles_client:client_id(nome),
           pets:pet_id(nome)
@@ -46,7 +44,23 @@ const Consultas = () => {
       
       if (error) throw error;
       
-      setConsultas(data || []);
+      // Mapear os dados para o formato correto com as relações
+      const consultasFormatadas = data?.map(consulta => {
+        return {
+          ...consulta,
+          profiles_client: { 
+            nome: consulta.profiles_client?.nome || "-" 
+          },
+          profiles_vet: { 
+            nome: consulta.profiles_vet?.nome || "-" 
+          },
+          pets: { 
+            nome: consulta.pets?.nome || "-" 
+          }
+        };
+      }) || [];
+      
+      setConsultas(consultasFormatadas);
     } catch (error) {
       console.error("Erro ao carregar consultas:", error);
       toast({

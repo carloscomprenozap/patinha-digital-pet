@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -39,7 +40,7 @@ const Prontuarios = () => {
           *,
           pets:pet_id(nome),
           consultas:consulta_id(data, diagnostico),
-          veterinarios:vet_id(profiles(nome))
+          vet:vet_id(nome)
         `);
       
       // Filtrar por tipo de usuário
@@ -69,6 +70,25 @@ const Prontuarios = () => {
       
       if (error) throw error;
       
+      // Get veterinarian names separately
+      const vetIds = data.map(item => item.vet_id).filter(Boolean);
+      const uniqueVetIds = [...new Set(vetIds)];
+      
+      let vetNames = {};
+      if (uniqueVetIds.length > 0) {
+        const { data: vetData, error: vetError } = await supabase
+          .from('profiles')
+          .select('id, nome')
+          .in('id', uniqueVetIds);
+          
+        if (!vetError && vetData) {
+          vetNames = vetData.reduce((acc, vet) => {
+            acc[vet.id] = vet.nome;
+            return acc;
+          }, {});
+        }
+      }
+      
       // Formatar os dados
       const formattedProntuarios = data.map(item => ({
         id: item.id,
@@ -81,7 +101,7 @@ const Prontuarios = () => {
         prescricao: item.prescricao || "",
         observacoes: item.observacoes || "",
         petNome: item.pets?.nome,
-        vetNome: item.veterinarios?.profiles?.nome
+        vetNome: vetNames[item.vet_id] || 'Veterinário não encontrado'
       }));
       
       setProntuarios(formattedProntuarios);

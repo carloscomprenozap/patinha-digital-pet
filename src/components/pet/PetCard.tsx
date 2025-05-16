@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dog, Cat, Bird, FileText, Pencil } from "lucide-react";
+import { Dog, Cat, Bird, FileText, Pencil, CalendarPlus } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Pet } from '@/types';
 
@@ -29,6 +29,10 @@ const PetCard: React.FC<PetCardProps> = ({ pet, onEdit }) => {
   
   const handleProntuarioClick = () => {
     navigate(`/prontuarios?petId=${pet.id}`);
+  };
+  
+  const handleAgendarClick = () => {
+    navigate(`/agendar?petId=${pet.id}`);
   };
 
   return (
@@ -68,21 +72,32 @@ const PetCard: React.FC<PetCardProps> = ({ pet, onEdit }) => {
           </div>
         )}
       </CardContent>
-      <CardFooter className="pt-2 flex gap-2">
-        {onEdit && (
-          <Button variant="outline" size="sm" className="flex-1" onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
+      <CardFooter className="pt-2 flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2 w-full">
+          {onEdit && (
+            <Button variant="outline" size="sm" className="flex-1" onClick={onEdit}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={handleProntuarioClick}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Prontuário
           </Button>
-        )}
+        </div>
         <Button 
-          variant="outline" 
+          variant="default" 
           size="sm" 
-          className="flex-1"
-          onClick={handleProntuarioClick}
+          className="w-full"
+          onClick={handleAgendarClick}
         >
-          <FileText className="h-4 w-4 mr-2" />
-          Prontuário
+          <CalendarPlus className="h-4 w-4 mr-2" />
+          Agendar Consulta
         </Button>
       </CardFooter>
     </Card>

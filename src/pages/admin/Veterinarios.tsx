@@ -20,9 +20,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast"; // Changed: import toast function instead of useToast hook
 import { supabase } from "@/integrations/supabase/client";
-import { Veterinarian } from "@/types";
+import { Veterinarian, Address } from "@/types";
 import { 
   Search, 
   Stethoscope, 
@@ -36,16 +36,20 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-interface VeterinarioExtended extends Veterinarian {
-  created_at: string;
+// Changed: Updated interface to correctly extend Veterinarian
+interface VeterinarioExtended extends Omit<Veterinarian, 'endereco' | 'createdAt'> {
   endereco?: {
     cidade: string;
     estado: string;
-  }
+    cep: string;
+    bairro: string;
+    logradouro: string;
+    numero: string;
+  };
+  created_at: string;
 }
 
 const Veterinarios = () => {
-  const { toast } = useToast();
   const [veterinarios, setVeterinarios] = useState<VeterinarioExtended[]>([]);
   const [filteredVets, setFilteredVets] = useState<VeterinarioExtended[]>([]);
   const [isLoading, setIsLoading] = useState(true);

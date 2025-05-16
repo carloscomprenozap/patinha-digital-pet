@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast"; // Changed: import toast function instead of useToast hook
 import { Database } from "@/integrations/supabase/types";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -38,7 +38,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
-  const { toast } = useToast();
+  
+  // Removed useToast hook call here
 
   // Inicializa autenticação e escuta mudanças de estado
   useEffect(() => {
